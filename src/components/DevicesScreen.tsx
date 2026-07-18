@@ -78,7 +78,7 @@ export default function DevicesScreen({ userId, onBack }: DevicesScreenProps) {
       <div className="flex items-center justify-between border-b border-slate-900 pb-3 mb-5 px-1">
         <button
           onClick={onBack}
-          className="text-blue-500 hover:text-blue-400 font-medium flex items-center gap-1 focus:outline-none"
+          className="text-primary hover:text-primary-hover font-medium flex items-center gap-1 focus:outline-none"
         >
           <ChevronLeft className="w-5 h-5" /> Назад
         </button>
@@ -93,7 +93,7 @@ export default function DevicesScreen({ userId, onBack }: DevicesScreenProps) {
       <div className="flex-grow overflow-y-auto flex flex-col gap-2.5">
         {loading ? (
           <div className="flex justify-center py-10">
-            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : devices.length === 0 ? (
           <p className="text-slate-500 text-center py-10 text-sm">
@@ -129,14 +129,14 @@ export default function DevicesScreen({ userId, onBack }: DevicesScreenProps) {
               <div
                 key={d.device_id}
                 className={`flex items-center justify-between p-4 bg-slate-900/40 border rounded-xl hover:bg-slate-900/60 transition ${
-                  isMe ? 'border-blue-500/50 bg-blue-500/5' : 'border-slate-900/60'
+                  isMe ? 'border-primary/50 bg-primary/5' : 'border-slate-900/60'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center ${
                       isTargetMaster
-                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
+                        ? 'bg-primary text-white shadow-md shadow-primary/10'
                         : 'bg-slate-800 text-slate-300'
                     }`}
                   >
@@ -146,7 +146,7 @@ export default function DevicesScreen({ userId, onBack }: DevicesScreenProps) {
                     <div className="font-semibold text-slate-100 text-base flex items-center gap-1.5">
                       {d.device_name}
                       {isMe && (
-                        <span className="text-[11px] font-medium bg-blue-500/10 border border-blue-500/20 text-blue-500 rounded px-1.5 py-0.5">
+                        <span className="text-[11px] font-medium bg-primary-light border border-primary-border text-primary rounded px-1.5 py-0.5">
                           Это устр-во
                         </span>
                       )}

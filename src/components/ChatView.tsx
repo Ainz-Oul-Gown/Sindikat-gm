@@ -322,6 +322,9 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
 
   useEffect(() => {
     loadChatKeys();
+    if (chat.type === 'group') {
+      loadChatInfoDetails();
+    }
   }, [chat.id]);
 
   useEffect(() => {
@@ -719,7 +722,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
 
         setReplyTo({
           id: targetMsg.id,
-          name: targetMsg.isMine ? 'Я' : targetMsg.senderName,
+          name: targetMsg.isMine ? 'Я' : getSenderName(targetMsg.sender_id),
           text: cleanText,
         });
 
@@ -778,7 +781,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
   };
 
   // Load chat detailed information
-  const loadChatInfoDetails = async () => {
+  async function loadChatInfoDetails() {
     if (chat.type === 'group') {
       try {
         const { data: keys } = await supabaseClient
@@ -799,6 +802,12 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
         console.error(e);
       }
     }
+  }
+
+  const getSenderName = (senderId: number) => {
+    if (senderId === currentUser.id) return 'Я';
+    const member = groupMembers.find((m) => m.tg_id === senderId);
+    return member ? member.first_name : 'Участник';
   };
 
   useEffect(() => {
@@ -1064,7 +1073,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
       <div className="flex items-center justify-between border-b border-slate-900 pb-3 p-4 bg-slate-900/40 relative z-10 flex-shrink-0">
         <button
           onClick={onBack}
-          className="text-blue-500 hover:text-blue-400 font-medium flex items-center focus:outline-none"
+          className="text-primary hover:text-primary-hover font-medium flex items-center focus:outline-none"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -1085,14 +1094,14 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
           {chat.type === 'private' && (
             <button
               onClick={() => setActiveModal('debts')}
-              className="w-9 h-9 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-blue-500 hover:text-blue-400 active:scale-95 transition focus:outline-none"
+              className="w-9 h-9 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-primary hover:text-primary-hover active:scale-95 transition focus:outline-none"
             >
               <Wallet className="w-4.5 h-4.5" />
             </button>
           )}
           <button
             onClick={() => setActiveModal('search')}
-            className="w-9 h-9 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-blue-500 hover:text-blue-400 active:scale-95 transition focus:outline-none"
+            className="w-9 h-9 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-primary hover:text-primary-hover active:scale-95 transition focus:outline-none"
           >
             <Search className="w-4.5 h-4.5" />
           </button>
@@ -1122,14 +1131,14 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
                   onTouchEnd={handleTouchEnd}
                   className={`msg-bubble flex flex-col ${
                     m.isMine
-                      ? 'msg-mine self-end bg-blue-600 text-white rounded-[18px] rounded-br-[4px] shadow-md shadow-blue-600/10'
+                      ? 'msg-mine self-end bg-primary text-white rounded-[18px] rounded-br-[4px] shadow-md shadow-primary/10'
                       : 'msg-other self-start bg-slate-900 border border-slate-850 text-slate-100 rounded-[18px] rounded-bl-[4px]'
                   }`}
                 >
                   {/* Sender Name in group */}
                   {isGroup && !m.isMine && (
-                    <div className="sender-name text-xs font-bold text-blue-400 mb-1">
-                      {m.senderName}
+                    <div className="sender-name text-xs font-bold text-primary mb-1">
+                      {getSenderName(m.sender_id)}
                     </div>
                   )}
 
@@ -1140,7 +1149,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
                       className={`msg-reply-block cursor-pointer border-l-2 p-1.5 rounded mb-2.5 text-xs ${
                         m.isMine
                           ? 'bg-white/10 border-white text-white/95'
-                          : 'bg-black/10 border-blue-500 text-slate-300'
+                          : 'bg-black/10 border-primary text-slate-300'
                       }`}
                     >
                       <div className="font-bold mb-0.5">{m.reply.name}</div>
@@ -1217,8 +1226,8 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
         {/* Reply Preview */}
         {replyTo && (
           <div className="flex items-center gap-2 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900/60 mb-2 select-none animate-slide-up">
-            <div className="flex-grow border-l-2 border-blue-500 pl-3">
-              <div className="text-xs font-semibold text-blue-500">{replyTo.name}</div>
+            <div className="flex-grow border-l-2 border-primary pl-3">
+              <div className="text-xs font-semibold text-primary">{replyTo.name}</div>
               <div className="text-xs text-slate-400 truncate max-w-[260px]">{replyTo.text}</div>
             </div>
             <button
@@ -1244,13 +1253,13 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
               }
             }}
             placeholder="Сообщение..."
-            className="flex-grow bg-slate-950 border border-slate-850 text-slate-200 rounded-2xl px-4 py-2.5 text-base focus:border-blue-500 outline-none max-h-[120px] resize-none overflow-y-auto leading-[20px] min-h-[42px]"
+            className="flex-grow bg-slate-950 border border-slate-850 text-slate-200 rounded-2xl px-4 py-2.5 text-base focus:border-primary outline-none max-h-[120px] resize-none overflow-y-auto leading-[20px] min-h-[42px]"
           />
 
           {inputText.trim() ? (
             <button
               onClick={() => handleSendMessage()}
-              className="w-11 h-11 rounded-full bg-blue-600 text-white flex items-center justify-center active:scale-95 transition-all shadow-lg shadow-blue-600/10 focus:outline-none"
+              className="w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center active:scale-95 transition-all shadow-lg shadow-primary/10 focus:outline-none"
             >
               <Send className="w-5 h-5 transform rotate-[-15deg] translate-x-[-1px] translate-y-[1px]" />
             </button>
@@ -1273,7 +1282,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
       {activeModal === 'info' && (
         <div className="fixed inset-0 z-[1000] bg-slate-950 p-6 overflow-y-auto animate-fade-in flex flex-col">
           <div className="flex justify-between items-center mb-6">
-            <button onClick={() => setActiveModal('none')} className="text-blue-500 font-medium">
+            <button onClick={() => setActiveModal('none')} className="text-primary font-medium">
               Закрыть
             </button>
             <span className="font-bold text-slate-200">Информация</span>
@@ -1281,7 +1290,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
           </div>
 
           <div className="flex flex-col items-center mb-8">
-            <div className="w-20 h-20 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center text-3xl font-bold mb-3">
+            <div className="w-20 h-20 rounded-full bg-primary-light border border-primary-border text-primary flex items-center justify-center text-3xl font-bold mb-3">
               {(isGroup ? groupName : chat.name).charAt(0).toUpperCase()}
             </div>
             <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
@@ -1299,7 +1308,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
             <div className="flex flex-col gap-5 flex-grow">
               <button
                 onClick={() => setActiveModal('invite-friend')}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-1.5 transition"
+                className="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-1.5 transition"
               >
                 <UserPlus className="w-5 h-5" /> Позвать брата
               </button>
@@ -1354,7 +1363,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
       {activeModal === 'search' && (
         <div className="fixed inset-0 z-[1000] bg-slate-950 p-5 overflow-y-auto animate-fade-in flex flex-col">
           <div className="flex justify-between items-center mb-6 flex-shrink-0">
-            <button onClick={() => setActiveModal('none')} className="text-blue-500 font-medium">
+            <button onClick={() => setActiveModal('none')} className="text-primary font-medium">
               Закрыть
             </button>
             <span className="font-bold text-slate-200">Поиск в чате</span>
@@ -1370,7 +1379,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
       {activeModal === 'debts' && (
         <div className="fixed inset-0 z-[1000] bg-slate-950 p-6 overflow-y-auto animate-fade-in flex flex-col">
           <div className="flex justify-between items-center mb-6">
-            <button onClick={() => setActiveModal('none')} className="text-blue-500 font-medium">
+            <button onClick={() => setActiveModal('none')} className="text-primary font-medium">
               Закрыть
             </button>
             <span className="font-bold text-slate-200">Сводка долгов</span>
@@ -1421,7 +1430,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
 
           <button
             onClick={() => setActiveModal('add-debt')}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-1.5 mt-auto transition"
+            className="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-1.5 mt-auto transition"
           >
             <Plus className="w-5 h-5" /> Оформить долг
           </button>
@@ -1432,7 +1441,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
       {activeModal === 'add-debt' && (
         <div className="fixed inset-0 z-[1000] bg-slate-950 p-6 overflow-y-auto animate-fade-in flex flex-col">
           <div className="flex justify-between items-center mb-6">
-            <button onClick={() => setActiveModal('debts')} className="text-blue-500 font-medium">
+            <button onClick={() => setActiveModal('debts')} className="text-primary font-medium">
               Назад
             </button>
             <span className="font-bold text-slate-200">Оформление долга</span>
@@ -1449,7 +1458,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
                 value={debtRubles}
                 onChange={(e) => setDebtRubles(e.target.value)}
                 placeholder="Сумма..."
-                className="w-full bg-slate-950 border border-slate-900 text-slate-200 rounded-xl px-4 py-3 text-lg font-bold text-center focus:border-blue-500 outline-none"
+                className="w-full bg-slate-950 border border-slate-900 text-slate-200 rounded-xl px-4 py-3 text-lg font-bold text-center focus:border-primary outline-none"
               />
             </div>
 
@@ -1462,7 +1471,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
                   const selected = currencies.find((c) => c.id === e.target.value);
                   setSelectedCurrency(selected || null);
                 }}
-                className="w-full bg-slate-950 border border-slate-900 text-slate-200 rounded-xl px-4 py-3 text-base focus:border-blue-500 outline-none"
+                className="w-full bg-slate-950 border border-slate-900 text-slate-200 rounded-xl px-4 py-3 text-base focus:border-primary outline-none"
               >
                 {currencies.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -1486,7 +1495,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
 
             <button
               onClick={handleSaveDebt}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-1.5 transition"
+              className="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-1.5 transition"
             >
               Закрепить долг
             </button>
@@ -1498,7 +1507,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
       {activeModal === 'invite-friend' && (
         <div className="fixed inset-0 z-[1000] bg-slate-950 p-6 overflow-y-auto animate-fade-in flex flex-col">
           <div className="flex justify-between items-center mb-6">
-            <button onClick={() => setActiveModal('info')} className="text-blue-500 font-medium">
+            <button onClick={() => setActiveModal('info')} className="text-primary font-medium">
               Назад
             </button>
             <span className="font-bold text-slate-200">Кого позвать?</span>
@@ -1525,7 +1534,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
 
                   <button
                     onClick={() => handleSendGroupInvite(f.tg_id)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg text-xs transition"
+                    className="bg-primary hover:bg-primary-hover text-white font-semibold py-2 px-4 rounded-lg text-xs transition"
                   >
                     Позвать
                   </button>

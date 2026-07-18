@@ -24,6 +24,7 @@ import StealthOverlay from './components/StealthOverlay';
 import PinScreen from './components/PinScreen';
 import ChatView from './components/ChatView';
 import SettingsModal from './components/SettingsModal';
+import { applyTheme } from './lib/theme';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<{ id: number; first_name: string } | null>(null);
@@ -801,10 +802,8 @@ export default function App() {
     bootstrap();
 
     // Load custom themes on boot
-    const themeColor = localStorage.getItem('synd_theme_color');
-    if (themeColor) {
-      document.documentElement.style.setProperty('--primary', themeColor);
-    }
+    const themeColor = localStorage.getItem('synd_theme_color') || '#0A84FF';
+    applyTheme(themeColor);
 
     return () => {
       if (workerRef.current) {
@@ -837,7 +836,7 @@ export default function App() {
   if (!isAuth) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 p-6 text-center select-none text-slate-100">
-        <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-5" />
+        <Loader2 className="w-12 h-12 text-primary animate-spin mb-5" />
         <p className="text-slate-300 text-base max-w-[280px] leading-relaxed font-semibold">
           {loadingText}
         </p>
@@ -848,7 +847,7 @@ export default function App() {
   if (activeScreen === 'sync_waiting') {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 p-6 text-center select-none text-slate-100">
-        <Smartphone className="w-12 h-12 text-blue-500 animate-bounce mb-5" />
+        <Smartphone className="w-12 h-12 text-primary animate-bounce mb-5" />
         <h3 className="text-lg font-bold text-slate-200 mb-2">Авторизация устройства</h3>
         <p className="text-slate-400 text-sm max-w-[280px] leading-relaxed">
           {loadingText}
@@ -909,7 +908,7 @@ export default function App() {
         <div className="flex flex-col h-full overflow-y-auto p-4 flex-grow pb-24">
           {/* Header */}
           <div className="flex items-center justify-between py-3 mb-5 border-b border-slate-900 flex-shrink-0">
-            <h2 className="text-xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-emerald-400">
+            <h2 className="text-xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-400">
               СИНДИКАТ
             </h2>
             <button
@@ -942,7 +941,7 @@ export default function App() {
             </h3>
             <button
               onClick={() => setShowAddFriend(true)}
-              className="w-8 h-8 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition focus:outline-none"
+              className="w-8 h-8 bg-primary-light text-primary border border-primary-border rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition focus:outline-none"
             >
               <UserPlus className="w-4.5 h-4.5" />
             </button>
@@ -956,12 +955,12 @@ export default function App() {
               className="flex items-center justify-between p-4 bg-slate-900/40 border border-slate-900/60 rounded-xl hover:bg-slate-900/60 transition cursor-pointer"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center shadow-inner">
+                <div className="w-10 h-10 rounded-full bg-primary-light text-primary flex items-center justify-center shadow-inner">
                   <Bookmark className="w-5 h-5 fill-current" />
                 </div>
                 <div>
                   <div className="font-semibold text-slate-100 text-base">Избранное</div>
-                  <div className="text-xs text-blue-500 mt-0.5 font-medium">Заметки и файлы</div>
+                  <div className="text-xs text-primary mt-0.5 font-medium">Заметки и файлы</div>
                 </div>
               </div>
               <ChevronRight className="w-4.5 h-4.5 text-slate-500" />
@@ -1052,7 +1051,7 @@ export default function App() {
           {/* Floated Group creation action trigger */}
           <button
             onClick={() => setShowCreateGroup(true)}
-            className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-xl shadow-blue-600/20 active:scale-95 transition-all outline-none focus:outline-none"
+            className="fixed bottom-6 right-6 w-14 h-14 bg-primary hover:bg-primary-hover text-white rounded-full flex items-center justify-center shadow-xl shadow-primary/20 active:scale-95 transition-all outline-none focus:outline-none"
           >
             <Plus className="w-6.5 h-6.5" />
           </button>
@@ -1092,11 +1091,11 @@ export default function App() {
               placeholder="Название группы..."
               value={groupNameInput}
               onChange={(e) => setGroupNameInput(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-900 text-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
+              className="w-full bg-slate-950 border border-slate-900 text-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary"
             />
             <button
               onClick={handleCreateGroup}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl transition"
+              className="bg-primary hover:bg-primary-hover text-white font-semibold py-3.5 rounded-xl transition"
             >
               Создать
             </button>
@@ -1116,7 +1115,7 @@ export default function App() {
             </button>
             <h3 className="font-bold text-slate-100 text-lg">Найти брата</h3>
             <p className="text-xs text-slate-400 mt-[-5px]">
-              Введите Telegram ID друга. Чтобы узнать свой ID, посмотрите на ID в карточке вашего
+              Введите Telegram ID друга. Чтобы узнать свой ID, посмотрите на ID in карточке вашего
               профиля.
             </p>
             <input
@@ -1124,12 +1123,12 @@ export default function App() {
               placeholder="ID друга..."
               value={friendIdInput}
               onChange={(e) => setFriendIdInput(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-900 text-slate-200 rounded-xl px-4 py-3 font-bold tracking-widest text-center outline-none focus:border-blue-500"
+              className="w-full bg-slate-950 border border-slate-900 text-slate-200 rounded-xl px-4 py-3 font-bold tracking-widest text-center outline-none focus:border-primary"
             />
             <button
               onClick={handleAddFriend}
               disabled={searchSpinner}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl transition flex items-center justify-center gap-1.5"
+              className="bg-primary hover:bg-primary-hover text-white font-semibold py-3.5 rounded-xl transition flex items-center justify-center gap-1.5"
             >
               {searchSpinner ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Отправить запрос'}
             </button>

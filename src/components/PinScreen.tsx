@@ -161,7 +161,7 @@ export default function PinScreen({
         {type === 'panic' ? (
           <ShieldAlert className="w-12 h-12 text-rose-500 mb-4 animate-pulse" />
         ) : (
-          <Lock className="w-12 h-12 text-blue-500 mb-4" />
+          <Lock className="w-12 h-12 text-primary mb-4" />
         )}
         <h2 className="text-xl font-semibold text-slate-200 tracking-wide text-center">
           {getTitle()}
@@ -181,7 +181,7 @@ export default function PinScreen({
               index < enteredPin.length
                 ? isError
                   ? 'bg-rose-500 border-rose-500'
-                  : 'bg-blue-500 border-blue-500 scale-110'
+                  : 'bg-primary border-primary scale-110'
                 : 'border-slate-500'
             }`}
           />

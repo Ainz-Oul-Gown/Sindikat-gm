@@ -152,7 +152,7 @@ export default function CurrenciesScreen({ userId, onBack }: CurrenciesScreenPro
       <div className="flex-grow overflow-y-auto flex flex-col gap-2.5">
         {loading ? (
           <div className="flex justify-center py-10">
-            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
           </div>
         ) : currencies.length === 0 ? (
           <p className="text-slate-500 text-center py-10 text-sm">
@@ -165,7 +165,7 @@ export default function CurrenciesScreen({ userId, onBack }: CurrenciesScreenPro
               className="flex items-center justify-between p-4 bg-slate-900/40 border border-slate-900/60 rounded-xl hover:bg-slate-900/60 transition"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-primary-light text-primary flex items-center justify-center">
                   <Coins className="w-5 h-5" />
                 </div>
                 <div>

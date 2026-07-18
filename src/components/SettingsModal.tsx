@@ -15,6 +15,7 @@ import CurrenciesScreen from './CurrenciesScreen';
 import DevicesScreen from './DevicesScreen';
 import StorageScreen from './StorageScreen';
 import AiScreen from './AiScreen';
+import { applyTheme } from '../lib/theme';
 
 interface SettingsModalProps {
   userId: number;
@@ -55,7 +56,7 @@ export default function SettingsModal({
   const handleColorSelect = (color: string) => {
     setAccentColor(color);
     localStorage.setItem('synd_theme_color', color);
-    document.documentElement.style.setProperty('--primary', color);
+    applyTheme(color);
 
     if (window.Telegram?.WebApp?.HapticFeedback) {
       window.Telegram.WebApp.HapticFeedback.selectionChanged();
@@ -138,7 +139,7 @@ export default function SettingsModal({
             {/* Color picker */}
             <div className="flex items-center justify-between p-4">
               <div className="flex items-center gap-3 text-slate-300">
-                <Palette className="w-5 h-5 text-blue-500" />
+                <Palette className="w-5 h-5 text-primary" />
                 <span className="text-sm font-medium">Цвет темы</span>
               </div>
               <div className="flex gap-2.5">
@@ -187,7 +188,7 @@ export default function SettingsModal({
               className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-900/20 active:bg-slate-900/40 transition"
             >
               <div className="flex items-center gap-3 text-slate-300">
-                <Coins className="w-5 h-5 text-blue-500" />
+                <Coins className="w-5 h-5 text-primary" />
                 <span className="text-sm font-medium">Мои валюты</span>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-500" />
@@ -199,7 +200,7 @@ export default function SettingsModal({
               className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-900/20 active:bg-slate-900/40 transition"
             >
               <div className="flex items-center gap-3 text-slate-300">
-                <Smartphone className="w-5 h-5 text-blue-500" />
+                <Smartphone className="w-5 h-5 text-primary" />
                 <span className="text-sm font-medium">Устройства</span>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-500" />
