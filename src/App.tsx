@@ -43,6 +43,7 @@ export default function App() {
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
   
   // Local PIN lock
   const [isPinLocked, setIsPinLocked] = useState(false);
@@ -175,8 +176,12 @@ export default function App() {
       }
 
       // Proctored approvals listener
+      const chName = `sync-waiter-${userId}`;
+      supabaseClient.getChannels().forEach(c => {
+        if (c.topic === `realtime:${chName}`) supabaseClient.removeChannel(c);
+      });
       const channel = supabaseClient
-        .channel(`sync-waiter-${userId}`)
+        .channel(chName)
         .on(
           'postgres_changes',
           {
@@ -312,43 +317,43 @@ export default function App() {
 
     // Dynamic kill switch subscription
     const channelName = `kill-switch-${deviceId}`;
-    const existing = supabaseClient.getChannels().find((c) => c.topic === `realtime:${channelName}`);
-    if (!existing) {
-      supabaseClient
-        .channel(channelName)
-        .on(
-          'postgres_changes',
-          { event: 'DELETE', schema: 'public', table: 'user_devices', filter: `device_id=eq.${deviceId}` },
-          async () => {
-            await idbKeyval.clear();
-            localStorage.clear();
-            alert('Сеанс завершен: Устройство удалено из аккаунта.');
-            window.location.reload();
-          }
-        )
-        .subscribe();
-    }
+    supabaseClient.getChannels().forEach(c => {
+      if (c.topic === `realtime:${channelName}`) supabaseClient.removeChannel(c);
+    });
+    supabaseClient
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'user_devices', filter: `device_id=eq.${deviceId}` },
+        async () => {
+          await idbKeyval.clear();
+          localStorage.clear();
+          alert('Сеанс завершен: Устройство удалено из аккаунта.');
+          window.location.reload();
+        }
+      )
+      .subscribe();
   };
 
   // 4. Listen to inbound key sync requests on primary administrator device
   const listenToSyncRequests = (userId: number) => {
     const channelName = `admin-sync-${userId}`;
-    const existing = supabaseClient.getChannels().find((c) => c.topic === `realtime:${channelName}`);
-    if (!existing) {
-      supabaseClient
-        .channel(channelName)
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'device_requests', filter: `user_id=eq.${userId}` },
-          (payload: any) => {
-            const req = payload.new;
-            if (req && req.status === 'pending') {
-              setPendingSyncRequest(req);
-            }
+    supabaseClient.getChannels().forEach(c => {
+      if (c.topic === `realtime:${channelName}`) supabaseClient.removeChannel(c);
+    });
+    supabaseClient
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'device_requests', filter: `user_id=eq.${userId}` },
+        (payload: any) => {
+          const req = payload.new;
+          if (req && req.status === 'pending') {
+            setPendingSyncRequest(req);
           }
-        )
-        .subscribe();
-    }
+        }
+      )
+      .subscribe();
 
     // Check for pending requests on load and via polling
     const fetchPending = () => {
@@ -859,11 +864,19 @@ export default function App() {
     const themeColor = localStorage.getItem('synd_theme_color') || '#0A84FF';
     applyTheme(themeColor);
 
+    const checkStandalone = () => {
+      const isStA = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+      setIsStandalone(!!isStA);
+    };
+    checkStandalone();
+    const mq = window.matchMedia('(display-mode: standalone)');
+    mq.addEventListener('change', checkStandalone);
 
     return () => {
-            if (workerRef.current) {
+      if (workerRef.current) {
         workerRef.current.terminate();
       }
+      mq.removeEventListener('change', checkStandalone);
     };
   }, []);
 
@@ -1009,35 +1022,37 @@ export default function App() {
               СИНДИКАТ
             </h2>
             <div className="flex items-center gap-1">
-              <button
-                onClick={async () => {
-                  const tgWebApp = window.Telegram?.WebApp as any;
-                  if (tgWebApp && tgWebApp.platform && tgWebApp.platform !== 'unknown') {
-                    // We are in Telegram WebApp, open link in external browser with token
-                    const token = localStorage.getItem('synd_token');
-                    if (token) {
-                      const url = new URL(window.location.href);
-                      url.hash = `token=${token}`;
-                      tgWebApp.openLink(url.toString());
+              {!isStandalone && (
+                <button
+                  onClick={async () => {
+                    const tgWebApp = window.Telegram?.WebApp as any;
+                    if (tgWebApp && tgWebApp.platform && tgWebApp.platform !== 'unknown') {
+                      // We are in Telegram WebApp, open link in external browser with token
+                      const token = localStorage.getItem('synd_token');
+                      if (token) {
+                        const url = new URL(window.location.href);
+                        url.hash = `token=${token}`;
+                        tgWebApp.openLink(url.toString());
+                      } else {
+                        tgWebApp.openLink(window.location.href);
+                      }
+                    } else if ((window as any).deferredPrompt) {
+                        const deferredPrompt = (window as any).deferredPrompt;
+                      deferredPrompt.prompt();
+                      const { outcome } = await deferredPrompt.userChoice;
+                      if (outcome === 'accepted') {
+                        (window as any).deferredPrompt = null;
+                      }
                     } else {
-                      tgWebApp.openLink(window.location.href);
+                      setShowInstallPrompt(true);
                     }
-                  } else if ((window as any).deferredPrompt) {
-                      const deferredPrompt = (window as any).deferredPrompt;
-                    deferredPrompt.prompt();
-                    const { outcome } = await deferredPrompt.userChoice;
-                    if (outcome === 'accepted') {
-                      (window as any).deferredPrompt = null;
-                    }
-                  } else {
-                    setShowInstallPrompt(true);
-                  }
-                }}
-                className="p-2 text-slate-400 hover:text-slate-200 active:scale-95 transition focus:outline-none"
-                title="Скачать приложение"
-              >
-                <Download className="w-5.5 h-5.5" />
-              </button>
+                  }}
+                  className="p-2 text-slate-400 hover:text-slate-200 active:scale-95 transition focus:outline-none"
+                  title="Скачать приложение"
+                >
+                  <Download className="w-5.5 h-5.5" />
+                </button>
+              )}
               <button
                 onClick={() => setShowSettings(true)}
                 className="p-2 text-slate-400 hover:text-slate-200 active:scale-95 transition focus:outline-none"

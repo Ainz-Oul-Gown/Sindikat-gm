@@ -254,7 +254,7 @@ hapticImpact("selection");
             return (
               <div
                 key={idx}
-                className="flex-1 rounded-[2px] transition-all min-w-[2.5px]"
+                className="flex-1 rounded-full transition-all"
                 style={{
                   height: `${Math.max(12, val)}%`,
                   backgroundColor: isActive ? 'rgb(255, 255, 255)' : 'rgba(255, 255, 255, 0.4)',

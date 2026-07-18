@@ -1413,7 +1413,7 @@ hapticImpact("selection");
                   <span className="text-slate-400 text-[10px] uppercase font-bold flex items-center gap-1">Замок <span className="text-lg leading-none">&uarr;</span></span>
                 </div>
               ) : (
-                <div className="flex items-center justify-center flex-grow">
+                <div className="flex items-center justify-center flex-grow min-w-0 overflow-hidden">
                   {recordPreviewUrl && (
                     <audio
                       ref={previewAudioRef}
@@ -1432,7 +1432,7 @@ hapticImpact("selection");
                     />
                   )}
                   {isRecordPaused ? (
-                    <div className="flex items-center gap-3 bg-slate-800/50 py-1 px-3 rounded-full flex-grow mx-2">
+                    <div className="flex items-center gap-2 bg-slate-800/50 py-1 px-3 rounded-full flex-grow mx-2 min-w-0">
                       <button
                         onClick={() => {
                           if (previewAudioRef.current) {

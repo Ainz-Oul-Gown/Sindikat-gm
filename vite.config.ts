@@ -12,6 +12,8 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        injectRegister: 'auto',
+        includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png'],
         manifest: {
           name: 'Syndicate',
           short_name: 'Syndicate',
