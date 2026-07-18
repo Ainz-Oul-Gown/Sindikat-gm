@@ -167,6 +167,10 @@ export default function App() {
         alert('Ошибка подачи заявки на синхронизацию: ' + error.message);
         return;
       }
+      
+      if (!requestData) {
+        console.warn('Сервер вернул пустой результат. Заявка могла быть создана, но заблокирована RLS для чтения.');
+      }
 
       // Proctored approvals listener
       const channel = supabaseClient
@@ -196,6 +200,7 @@ export default function App() {
 
       // Reliable polling fallback
       const poll = setInterval(async () => {
+        if (!requestData) return;
         const { data } = await supabaseClient
           .from('device_requests')
           .select('*')
@@ -871,12 +876,32 @@ export default function App() {
   }
 
   if (!isAuth) {
+    const isError = loadingText.includes('Вам необходимо') || loadingText.includes('Ошибка');
     return (
       <div className="flex flex-col items-center justify-center h-[100dvh] bg-slate-950 p-6 text-center select-none text-slate-100">
-        <Loader2 className="w-12 h-12 text-primary animate-spin mb-5" />
+        {!isError ? (
+          <Loader2 className="w-12 h-12 text-primary animate-spin mb-5" />
+        ) : (
+          <ShieldAlert className="w-12 h-12 text-rose-500 mb-5" />
+        )}
         <p className="text-slate-300 text-base max-w-[280px] leading-relaxed font-semibold">
           {loadingText}
         </p>
+        
+        {isError && (
+          <div className="mt-8 flex flex-col gap-4 w-full max-w-[300px]">
+            <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-left">
+              <h4 className="text-slate-200 font-bold mb-2 flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-primary" /> Как войти?
+              </h4>
+              <ol className="text-sm text-slate-400 space-y-2 list-decimal list-inside marker:text-primary">
+                <li>Откройте Синдикат в Telegram</li>
+                <li>Нажмите значок скачивания в правом верхнем углу</li>
+                <li>Скопируйте ссылку и откройте её в этом браузере</li>
+              </ol>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -970,7 +995,18 @@ export default function App() {
             <div className="flex items-center gap-1">
               <button
                 onClick={async () => {
-                  if (deferredPrompt) {
+                  const tgWebApp = window.Telegram?.WebApp;
+                  if (tgWebApp && tgWebApp.platform && tgWebApp.platform !== 'unknown') {
+                    // We are in Telegram WebApp, open link in external browser with token
+                    const token = localStorage.getItem('synd_token');
+                    if (token) {
+                      const url = new URL(window.location.href);
+                      url.hash = `token=${token}`;
+                      tgWebApp.openLink(url.toString());
+                    } else {
+                      tgWebApp.openLink(window.location.href);
+                    }
+                  } else if (deferredPrompt) {
                     deferredPrompt.prompt();
                     const { outcome } = await deferredPrompt.userChoice;
                     if (outcome === 'accepted') {

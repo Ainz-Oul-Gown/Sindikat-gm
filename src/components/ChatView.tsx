@@ -76,6 +76,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
   const [isRecordPaused, setIsRecordPaused] = useState(false);
   const [recordPreviewUrl, setRecordPreviewUrl] = useState<string | null>(null);
   const [isRecordPlaying, setIsRecordPlaying] = useState(false);
+  const [recordPreviewProgress, setRecordPreviewProgress] = useState(0);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const [recordWaveHistory, setRecordWaveHistory] = useState<number[]>([]);
   const [micPulseScale, setMicPulseScale] = useState(1);
@@ -83,6 +84,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
   // Refs for recording logic
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recStartTimeRef = useRef<number>(0);
   const recAccumulatedTimeRef = useRef<number>(0);
   const recPauseTimeRef = useRef<number>(0);
   const recTimerRef = useRef<any>(null);
@@ -523,14 +525,14 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
       };
 
       mediaRecorderRef.current.start();
+      recStartTimeRef.current = Date.now();
       recAccumulatedTimeRef.current = 0;
       setIsRecording(true);
 
       // Start duration updates
       recTimerRef.current = setInterval(() => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-          recAccumulatedTimeRef.current += 100;
-          setRecordingDuration(Math.floor(recAccumulatedTimeRef.current / 1000));
+          setRecordingDuration(Math.floor((Date.now() - recStartTimeRef.current + recAccumulatedTimeRef.current) / 1000));
         }
       }, 100);
 
@@ -718,6 +720,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
   const pauseRecording = () => {
     if (mediaRecorderRef.current && isRecording && !isRecordPaused) {
       mediaRecorderRef.current.pause();
+      recAccumulatedTimeRef.current += Date.now() - recStartTimeRef.current;
       setIsRecordPaused(true);
       // Generate preview
       try {
@@ -740,6 +743,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
       }
       setRecordPreviewUrl(null);
       setIsRecordPlaying(false);
+      recStartTimeRef.current = Date.now();
       mediaRecorderRef.current.resume();
       setIsRecordPaused(false);
     }
@@ -1394,7 +1398,16 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
                     <audio
                       ref={previewAudioRef}
                       src={recordPreviewUrl}
-                      onEnded={() => setIsRecordPlaying(false)}
+                      onEnded={() => {
+                        setIsRecordPlaying(false);
+                        setRecordPreviewProgress(0);
+                      }}
+                      onTimeUpdate={(e) => {
+                        const target = e.target as HTMLAudioElement;
+                        if (target.duration) {
+                          setRecordPreviewProgress(target.currentTime / target.duration);
+                        }
+                      }}
                       className="hidden"
                     />
                   )}
@@ -1418,13 +1431,16 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
                       </button>
                       
                       <div className="flex items-center gap-0.5 h-6 flex-grow overflow-hidden justify-center opacity-70">
-                        {recordWaveHistory.slice(-20).map((vol, idx) => (
-                          <div
-                            key={idx}
-                            className={`w-1 rounded-full transition-all ${isRecordPlaying ? 'bg-primary' : 'bg-slate-400'}`}
-                            style={{ height: `${Math.max(10, Math.min(100, (vol / 150) * 100))}%` }}
-                          />
-                        ))}
+                        {recordWaveHistory.slice(-20).map((vol, idx) => {
+                          const isActive = idx < Math.floor(recordPreviewProgress * 20);
+                          return (
+                            <div
+                              key={idx}
+                              className={`w-1 rounded-full transition-all ${isActive ? 'bg-primary' : 'bg-slate-400'}`}
+                              style={{ height: `${Math.max(10, Math.min(100, (vol / 150) * 100))}%` }}
+                            />
+                          );
+                        })}
                       </div>
 
                       <span className="text-slate-300 font-mono font-bold tracking-widest text-sm flex-shrink-0">
