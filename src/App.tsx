@@ -200,11 +200,11 @@ export default function App() {
 
       // Reliable polling fallback
       const poll = setInterval(async () => {
-        if (!requestData) return;
         const { data } = await supabaseClient
           .from('device_requests')
           .select('*')
-          .eq('id', requestData.id)
+          .eq('user_id', userId)
+          .eq('temp_pub_key', JSON.stringify(tempPubJwk))
           .maybeSingle();
 
         if (data && data.status === 'approved') {
