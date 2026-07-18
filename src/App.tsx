@@ -128,7 +128,7 @@ export default function App() {
   // 2. Perform RSA/ECDSA key synchronizations (Decentralized Master Sync protocol)
   const syncDeviceKeys = async (userId: number) => {
     setActiveScreen('sync_waiting');
-    setLoadingText('Ожидание подтверждения от главного устройства...');
+    setLoadingText('Откройте Синдикат на своем основном устройстве и подтвердите вход. Это необходимо для безопасной передачи ключей шифрования.');
 
     try {
       // Create ephemeral RSA key pair for secure key transport
@@ -835,7 +835,7 @@ export default function App() {
 
   if (!isAuth) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 p-6 text-center select-none text-slate-100">
+      <div className="flex flex-col items-center justify-center h-[100dvh] bg-slate-950 p-6 text-center select-none text-slate-100">
         <Loader2 className="w-12 h-12 text-primary animate-spin mb-5" />
         <p className="text-slate-300 text-base max-w-[280px] leading-relaxed font-semibold">
           {loadingText}
@@ -846,18 +846,37 @@ export default function App() {
 
   if (activeScreen === 'sync_waiting') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 p-6 text-center select-none text-slate-100">
+      <div className="flex flex-col items-center justify-center h-[100dvh] bg-slate-950 p-6 text-center select-none text-slate-100">
         <Smartphone className="w-12 h-12 text-primary animate-bounce mb-5" />
         <h3 className="text-lg font-bold text-slate-200 mb-2">Авторизация устройства</h3>
         <p className="text-slate-400 text-sm max-w-[280px] leading-relaxed">
           {loadingText}
         </p>
+        <div className="mt-8 flex flex-col gap-3 w-full max-w-[280px]">
+          <button 
+            onClick={() => {
+              window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=Подтверждение%20входа%20в%20Синдикат`, '_blank');
+            }}
+            className="w-full py-3 bg-primary hover:bg-primary-hover text-white rounded-xl font-semibold transition flex items-center justify-center gap-2"
+          >
+            Отправить в Избранное
+          </button>
+          <button 
+            onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              alert('Ссылка скопирована!');
+            }}
+            className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl font-semibold transition flex items-center justify-center"
+          >
+            Скопировать ссылку
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 select-none overflow-hidden flex flex-col relative">
+    <div className="h-[100dvh] bg-slate-950 text-slate-100 select-none overflow-hidden flex flex-col relative">
       <StealthOverlay />
 
       {/* Primary alert wrapper for device approvals */}

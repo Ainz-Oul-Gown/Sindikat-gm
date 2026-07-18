@@ -435,10 +435,16 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
   // Scrolling indicators
   const handleScroll = (e: UIEvent<HTMLDivElement>) => {
     const area = e.currentTarget;
-    if (area.scrollTop < -150) {
+    if (Math.abs(area.scrollTop) > 150) {
       setShowScrollBottom(true);
     } else {
       setShowScrollBottom(false);
+    }
+    
+    if (Math.abs(area.scrollTop) + area.clientHeight >= area.scrollHeight - 300) {
+      if (renderLimit < messages.length) {
+        setRenderLimit(prev => prev + 30);
+      }
     }
   };
 
@@ -1118,6 +1124,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
           {messages
             .slice()
             .reverse()
+            .slice(0, renderLimit)
             .map((m) => {
               const msgDate = new Date(m.created_at);
               const timeStr = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1129,7 +1136,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
                   onTouchStart={(e) => handleTouchStart(e, m.id)}
                   onTouchMove={(e) => handleTouchMove(e, m.id)}
                   onTouchEnd={handleTouchEnd}
-                  className={`msg-bubble flex flex-col ${
+                  className={`msg-bubble flex flex-col px-4 py-3 relative max-w-[85%] ${
                     m.isMine
                       ? 'msg-mine self-end bg-primary text-white rounded-[18px] rounded-br-[4px] shadow-md shadow-primary/10'
                       : 'msg-other self-start bg-slate-900 border border-slate-850 text-slate-100 rounded-[18px] rounded-bl-[4px]'
@@ -1222,7 +1229,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
       </div>
 
       {/* Input controller bar */}
-      <div className="chat-input-area flex flex-col bg-slate-900/80 backdrop-blur-xl border-t border-slate-900 px-4 py-2 relative z-10">
+      <div className="chat-input-area flex-shrink-0 flex flex-col bg-slate-900/80 backdrop-blur-xl border-t border-slate-900 px-4 py-2 relative z-10">
         {/* Reply Preview */}
         {replyTo && (
           <div className="flex items-center gap-2 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900/60 mb-2 select-none animate-slide-up">
