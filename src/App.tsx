@@ -277,7 +277,7 @@ export default function App() {
       const ecdsaKey = await window.crypto.subtle.importKey(
         'jwk',
         masterKeysJson.ecdsa,
-        { name: 'ECDSA', namedCurve: 'P-256' },
+        { name: 'ECDSA', namedCurve: masterKeysJson?.ecdsa?.crv || ecdsa?.crv || 'P-256' },
         true,
         ['sign']
       );
@@ -311,36 +311,44 @@ export default function App() {
     );
 
     // Dynamic kill switch subscription
-    supabaseClient
-      .channel(`kill-switch-${deviceId}`)
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'user_devices', filter: `device_id=eq.${deviceId}` },
-        async () => {
-          await idbKeyval.clear();
-          localStorage.clear();
-          alert('Сеанс завершен: Устройство удалено из аккаунта.');
-          window.location.reload();
-        }
-      )
-      .subscribe();
+    const channelName = `kill-switch-${deviceId}`;
+    const existing = supabaseClient.getChannels().find((c) => c.topic === `realtime:${channelName}`);
+    if (!existing) {
+      supabaseClient
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'user_devices', filter: `device_id=eq.${deviceId}` },
+          async () => {
+            await idbKeyval.clear();
+            localStorage.clear();
+            alert('Сеанс завершен: Устройство удалено из аккаунта.');
+            window.location.reload();
+          }
+        )
+        .subscribe();
+    }
   };
 
   // 4. Listen to inbound key sync requests on primary administrator device
   const listenToSyncRequests = (userId: number) => {
-    supabaseClient
-      .channel(`admin-sync-${userId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'device_requests', filter: `user_id=eq.${userId}` },
-        (payload: any) => {
-          const req = payload.new;
-          if (req && req.status === 'pending') {
-            setPendingSyncRequest(req);
+    const channelName = `admin-sync-${userId}`;
+    const existing = supabaseClient.getChannels().find((c) => c.topic === `realtime:${channelName}`);
+    if (!existing) {
+      supabaseClient
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'device_requests', filter: `user_id=eq.${userId}` },
+          (payload: any) => {
+            const req = payload.new;
+            if (req && req.status === 'pending') {
+              setPendingSyncRequest(req);
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+    }
 
     // Check for pending requests on load and via polling
     const fetchPending = () => {
@@ -895,7 +903,7 @@ export default function App() {
               const pubEcdsa = Object.assign({}, ecdsa, { d: undefined });
               const pubRsa = Object.assign({}, rsa, { d: undefined, p: undefined, q: undefined, dp: undefined, dq: undefined, qi: undefined });
               
-              const impEcdsa = await window.crypto.subtle.importKey('jwk', ecdsa, { name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign']);
+              const impEcdsa = await window.crypto.subtle.importKey('jwk', ecdsa, { name: 'ECDSA', namedCurve: masterKeysJson?.ecdsa?.crv || ecdsa?.crv || 'P-256' }, true, ['sign']);
               const impRsa = await window.crypto.subtle.importKey('jwk', rsa, { name: 'RSA-OAEP', hash: 'SHA-256' }, true, ['decrypt']);
               
               await idbKeyval.set(`my_private_key_${user.id}`, impRsa);

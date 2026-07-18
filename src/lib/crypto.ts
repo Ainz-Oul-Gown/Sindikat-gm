@@ -18,7 +18,7 @@ export function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
 // Helper to convert base64 to array buffer
 export function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binaryString = atob(base64);
+  const binaryString = atob(base64.replace(/[^A-Za-z0-9+/=]/g, ''));
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) {
@@ -114,7 +114,7 @@ export async function verifySignature(
       const pubKey = await window.crypto.subtle.importKey(
         'jwk',
         deviceKeys.ecdsa,
-        { name: 'ECDSA', namedCurve: 'P-256' },
+        { name: 'ECDSA', namedCurve: deviceKeys.ecdsa.crv || 'P-256' },
         true,
         ['verify']
       );
