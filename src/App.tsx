@@ -16,6 +16,7 @@ import {
   LogOut,
   HelpCircle,
   Key,
+  Download,
 } from 'lucide-react';
 import { supabaseClient, setSupabaseToken, parseJwt } from './lib/supabase';
 import { checkCryptoKeys, generateChatKey, encryptChatKeyForFriend, decryptChatKey, getFingerprint } from './lib/crypto';
@@ -39,6 +40,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   // Local PIN lock
   const [isPinLocked, setIsPinLocked] = useState(false);
@@ -833,7 +835,14 @@ export default function App() {
     const themeColor = localStorage.getItem('synd_theme_color') || '#0A84FF';
     applyTheme(themeColor);
 
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
     return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       if (workerRef.current) {
         workerRef.current.terminate();
       }
@@ -958,12 +967,29 @@ export default function App() {
             <h2 className="text-xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-400">
               СИНДИКАТ
             </h2>
-            <button
-              onClick={() => setShowSettings(true)}
-              className="p-2 text-slate-400 hover:text-slate-200 active:scale-95 transition focus:outline-none"
-            >
-              <Settings className="w-5.5 h-5.5" />
-            </button>
+            <div className="flex items-center gap-1">
+              {deferredPrompt && (
+                <button
+                  onClick={async () => {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                      setDeferredPrompt(null);
+                    }
+                  }}
+                  className="p-2 text-slate-400 hover:text-slate-200 active:scale-95 transition focus:outline-none"
+                  title="Скачать приложение"
+                >
+                  <Download className="w-5.5 h-5.5" />
+                </button>
+              )}
+              <button
+                onClick={() => setShowSettings(true)}
+                className="p-2 text-slate-400 hover:text-slate-200 active:scale-95 transition focus:outline-none"
+              >
+                <Settings className="w-5.5 h-5.5" />
+              </button>
+            </div>
           </div>
 
           {/* Profile overview card */}

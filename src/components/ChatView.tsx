@@ -74,6 +74,9 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [isRecordLocked, setIsRecordingLocked] = useState(false);
   const [isRecordPaused, setIsRecordPaused] = useState(false);
+  const [recordPreviewUrl, setRecordPreviewUrl] = useState<string | null>(null);
+  const [isRecordPlaying, setIsRecordPlaying] = useState(false);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const [recordWaveHistory, setRecordWaveHistory] = useState<number[]>([]);
   const [micPulseScale, setMicPulseScale] = useState(1);
 
@@ -699,15 +702,45 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
   };
 
   const stopRecordingAndSend = () => {
-    if (isRecordLocked) return;
-    if (mediaRecorderRef.current && isRecording) {
+    if (isRecordLocked && !isRecordPaused) return; // if locked and not paused, do nothing on mouse up
+    if (mediaRecorderRef.current && (isRecording || isRecordPaused)) {
       mediaRecorderRef.current.stop();
     }
   };
 
   const forceStopRecordingAndSend = () => {
-    if (mediaRecorderRef.current && isRecording) {
+    if (mediaRecorderRef.current && (isRecording || isRecordPaused)) {
       mediaRecorderRef.current.stop();
+    }
+  };
+
+  const pauseRecording = () => {
+    if (mediaRecorderRef.current && isRecording && !isRecordPaused) {
+      mediaRecorderRef.current.pause();
+      setIsRecordPaused(true);
+      // Generate preview
+      try {
+        mediaRecorderRef.current.requestData();
+        setTimeout(() => {
+          if (audioChunksRef.current.length > 0) {
+            const tempBlob = new Blob(audioChunksRef.current, { type: 'audio/ogg; codecs=opus' });
+            const url = URL.createObjectURL(tempBlob);
+            setRecordPreviewUrl(url);
+          }
+        }, 50);
+      } catch (e) {}
+    }
+  };
+
+  const resumeRecording = () => {
+    if (mediaRecorderRef.current && isRecording && isRecordPaused) {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+      }
+      setRecordPreviewUrl(null);
+      setIsRecordPlaying(false);
+      mediaRecorderRef.current.resume();
+      setIsRecordPaused(false);
     }
   };
 
@@ -718,11 +751,22 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
         setIsRecording(false);
         setIsRecordingLocked(false);
         setIsRecordPaused(false);
+        setRecordPreviewUrl(null);
+        setIsRecordPlaying(false);
         setRecordingDuration(0);
         setRecordWaveHistory([]);
         setMicPulseScale(1);
       };
       mediaRecorderRef.current.stop();
+    } else {
+      setIsRecording(false);
+      setIsRecordingLocked(false);
+      setIsRecordPaused(false);
+      setRecordPreviewUrl(null);
+      setIsRecordPlaying(false);
+      setRecordingDuration(0);
+      setRecordWaveHistory([]);
+      setMicPulseScale(1);
     }
   };
 
@@ -1324,20 +1368,81 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
           {isRecording && (
             <div className="absolute inset-y-0 left-0 right-[56px] bg-slate-900 z-20 flex items-center justify-between px-2 rounded-2xl">
               <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
-                <span className="text-slate-200 font-mono font-bold tracking-widest text-lg">
-                  {Math.floor(recordingDuration / 60).toString().padStart(2, '0')}:{(recordingDuration % 60).toString().padStart(2, '0')}
-                </span>
+                {!isRecordLocked ? (
+                  <>
+                    <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+                    <span className="text-slate-200 font-mono font-bold tracking-widest text-lg">
+                      {Math.floor(recordingDuration / 60).toString().padStart(2, '0')}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                    </span>
+                  </>
+                ) : (
+                  <button onClick={cancelRecording} className="text-slate-400 p-2 hover:bg-slate-800 rounded-full transition">
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                )}
               </div>
+              
               {!isRecordLocked ? (
                 <div className="flex flex-col items-end gap-1 select-none pointer-events-none mr-2">
                   <span className="text-slate-400 text-[10px] uppercase font-bold flex items-center gap-1"><span className="text-lg leading-none">&larr;</span> Отмена</span>
                   <span className="text-slate-400 text-[10px] uppercase font-bold flex items-center gap-1">Замок <span className="text-lg leading-none">&uarr;</span></span>
                 </div>
               ) : (
-                <button onClick={cancelRecording} className="text-red-400 text-sm font-semibold py-2 px-3 hover:bg-red-400/10 rounded-xl transition">
-                  Отмена
-                </button>
+                <div className="flex items-center justify-center flex-grow">
+                  {recordPreviewUrl && (
+                    <audio
+                      ref={previewAudioRef}
+                      src={recordPreviewUrl}
+                      onEnded={() => setIsRecordPlaying(false)}
+                      className="hidden"
+                    />
+                  )}
+                  {isRecordPaused ? (
+                    <div className="flex items-center gap-3 bg-slate-800/50 py-1 px-3 rounded-full">
+                      <button
+                        onClick={() => {
+                          if (previewAudioRef.current) {
+                            if (isRecordPlaying) {
+                              previewAudioRef.current.pause();
+                              setIsRecordPlaying(false);
+                            } else {
+                              previewAudioRef.current.play();
+                              setIsRecordPlaying(true);
+                            }
+                          }
+                        }}
+                        className="text-primary hover:scale-105 transition"
+                      >
+                        {isRecordPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
+                      </button>
+                      <span className="text-slate-300 font-mono font-bold tracking-widest text-sm">
+                        {Math.floor(recordingDuration / 60).toString().padStart(2, '0')}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                      </span>
+                      <div className="w-px h-5 bg-slate-700" />
+                      <button onClick={resumeRecording} className="text-slate-400 hover:text-white transition flex flex-col items-center">
+                        <Mic className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 w-full max-w-[150px] mx-auto">
+                      <button onClick={pauseRecording} className="text-red-400 hover:text-red-300 transition p-1 bg-red-400/10 rounded-full flex-shrink-0">
+                        <Pause className="w-5 h-5 fill-current" />
+                      </button>
+                      <span className="text-red-400 font-mono font-bold tracking-widest text-sm">
+                        {Math.floor(recordingDuration / 60).toString().padStart(2, '0')}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                      </span>
+                      <div className="flex items-center gap-0.5 h-6 flex-grow overflow-hidden justify-end">
+                        {recordWaveHistory.slice(-15).map((vol, idx) => (
+                          <div
+                            key={idx}
+                            className="w-1 bg-red-400 rounded-full transition-all"
+                            style={{ height: `${Math.max(10, Math.min(100, (vol / 150) * 100))}%` }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
