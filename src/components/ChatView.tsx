@@ -1482,21 +1482,8 @@ hapticImpact("selection");
                       </span>
                       <div className="flex items-center gap-0.5 h-6 flex-grow overflow-hidden justify-end">
                         {(function() {
-                          const bars = 30;
-                          let displayWave = [];
-                          if (recordWaveHistory.length <= bars) {
-                            displayWave = [...recordWaveHistory];
-                          } else {
-                            const step = recordWaveHistory.length / bars;
-                            for (let i = 0; i < bars; i++) {
-                              const start = Math.floor(i * step);
-                              const end = Math.floor((i + 1) * step);
-                              const chunk = recordWaveHistory.slice(start, end);
-                              const avg = chunk.length > 0 ? chunk.reduce((a, b) => a + b, 0) / chunk.length : 0;
-                              displayWave.push(avg);
-                            }
-                          }
-                          const maxVol = Math.max(...displayWave, 50);
+                          const displayWave = recordWaveHistory.slice(-30);
+                          const maxVol = Math.max(...recordWaveHistory, 50);
                           return displayWave.map((vol, idx) => (
                             <div
                               key={idx}

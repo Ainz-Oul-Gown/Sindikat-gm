@@ -60,21 +60,46 @@ export default function DevicesScreen({ userId, onBack }: DevicesScreenProps) {
           ['encrypt']
         );
         
-        const encryptedBuffer = await crypto.subtle.encrypt(
-          { name: 'RSA-OAEP' },
-          importedPubKey,
+        // Generate AES key for payload
+        const aesKey = await crypto.subtle.generateKey(
+          { name: 'AES-GCM', length: 256 },
+          true,
+          ['encrypt']
+        );
+        
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const ciphertextBuf = await crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv },
+          aesKey,
           payloadBytes
         );
         
-        const encryptedStr = btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer)));
+        const exportedAesKey = await crypto.subtle.exportKey('raw', aesKey);
         
-        await supabaseClient.channel(`qr-login-${parsed.sessionId}`).send({
-          type: 'broadcast',
-          event: 'auth-payload',
-          payload: { data: encryptedStr }
+        const encryptedAesKeyBuf = await crypto.subtle.encrypt(
+          { name: 'RSA-OAEP' },
+          importedPubKey,
+          exportedAesKey
+        );
+        
+        const payloadData = {
+          encKey: btoa(String.fromCharCode(...new Uint8Array(encryptedAesKeyBuf))),
+          iv: btoa(String.fromCharCode(...iv)),
+          cipher: btoa(String.fromCharCode(...new Uint8Array(ciphertextBuf)))
+        };
+        
+        const channel = supabaseClient.channel(`qr-login-${parsed.sessionId}`);
+        channel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await channel.send({
+              type: 'broadcast',
+              event: 'auth-payload',
+              payload: { data: payloadData }
+            });
+            alert('Устройство успешно авторизовано!');
+            supabaseClient.removeChannel(channel);
+          }
         });
-        
-        alert('Устройство успешно авторизовано!');
       }
     } catch (e) {
       console.error('Scan error', e);

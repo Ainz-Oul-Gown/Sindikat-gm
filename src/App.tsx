@@ -92,7 +92,7 @@ export default function App() {
         });
 
         if (result && result.token) {
-          setSupabaseToken(result.token);
+          localStorage.setItem('synd_token', result.token); setSupabaseToken(result.token);
           const userObj = { id: result.id, first_name: result.first_name };
           setCurrentUser(userObj);
           return userObj;

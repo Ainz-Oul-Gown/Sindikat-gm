@@ -35,18 +35,32 @@ export function LoginScreen({ onLoginSuccess, isError, loadingText }: LoginScree
         .on('broadcast', { event: 'auth-payload' }, async (payload) => {
           try {
             console.log('Received auth payload');
-            const encryptedDataStr = payload.payload.data;
-            const encryptedData = new Uint8Array(
-              atob(encryptedDataStr).split('').map(c => c.charCodeAt(0))
-            );
+            const { encKey, iv, cipher } = payload.payload.data;
+            const encKeyBuf = new Uint8Array(atob(encKey).split('').map(c => c.charCodeAt(0)));
+            const ivBuf = new Uint8Array(atob(iv).split('').map(c => c.charCodeAt(0)));
+            const cipherBuf = new Uint8Array(atob(cipher).split('').map(c => c.charCodeAt(0)));
             
-            const decryptedBuffer = await crypto.subtle.decrypt(
+            const decryptedAesKeyRaw = await crypto.subtle.decrypt(
               { name: 'RSA-OAEP' },
               privateKeyRef.current!,
-              encryptedData
+              encKeyBuf
             );
             
-            const decryptedStr = new TextDecoder().decode(decryptedBuffer);
+            const aesKey = await crypto.subtle.importKey(
+              'raw',
+              decryptedAesKeyRaw,
+              { name: 'AES-GCM' },
+              false,
+              ['decrypt']
+            );
+            
+            const decryptedPayloadBuf = await crypto.subtle.decrypt(
+              { name: 'AES-GCM', iv: ivBuf },
+              aesKey,
+              cipherBuf
+            );
+            
+            const decryptedStr = new TextDecoder().decode(decryptedPayloadBuf);
             const { token, masterKeys, user } = JSON.parse(decryptedStr);
             
             onLoginSuccess(token, masterKeys, user);
@@ -135,7 +149,7 @@ export function LoginScreen({ onLoginSuccess, isError, loadingText }: LoginScree
               if (tgWebApp && tgWebApp.platform && tgWebApp.platform !== 'unknown') {
                 window.location.reload();
               } else {
-                window.location.href = 'https://t.me/your_bot_name_here';
+                alert('Пожалуйста, откройте мини-приложение в самом Telegram на этом устройстве, или отсканируйте QR-код с уже авторизованного устройства.');
               }
             }}
             className="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3.5 px-8 rounded-xl transition-colors active:scale-95"
