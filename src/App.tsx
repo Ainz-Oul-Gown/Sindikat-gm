@@ -170,21 +170,21 @@ export default function App() {
 
       // Proctored approvals listener
       const channel = supabaseClient
-        .channel(`sync-waiter-${requestData.id}`)
+        .channel(`sync-waiter-${userId}`)
         .on(
           'postgres_changes',
           {
             event: 'UPDATE',
             schema: 'public',
             table: 'device_requests',
-            filter: `id=eq.${requestData.id}`,
+            filter: `user_id=eq.${userId}`,
           },
           async (payload: any) => {
             const updated = payload.new;
-            if (updated.status === 'approved') {
+            if (updated.status === 'approved' && updated.temp_pub_key === JSON.stringify(tempPubJwk)) {
               supabaseClient.removeChannel(channel);
               await handleApprovedKeys(updated, tempKeyPair.privateKey, userId);
-            } else if (updated.status === 'rejected') {
+            } else if (updated.status === 'rejected' && updated.temp_pub_key === JSON.stringify(tempPubJwk)) {
               supabaseClient.removeChannel(channel);
               alert('Доступ отклонен главным устройством.');
               localStorage.clear();
@@ -968,21 +968,23 @@ export default function App() {
               СИНДИКАТ
             </h2>
             <div className="flex items-center gap-1">
-              {deferredPrompt && (
-                <button
-                  onClick={async () => {
+              <button
+                onClick={async () => {
+                  if (deferredPrompt) {
                     deferredPrompt.prompt();
                     const { outcome } = await deferredPrompt.userChoice;
                     if (outcome === 'accepted') {
                       setDeferredPrompt(null);
                     }
-                  }}
-                  className="p-2 text-slate-400 hover:text-slate-200 active:scale-95 transition focus:outline-none"
-                  title="Скачать приложение"
-                >
-                  <Download className="w-5.5 h-5.5" />
-                </button>
-              )}
+                  } else {
+                    alert('Для установки приложения:\n\n📱 На iOS: Нажмите кнопку "Поделиться" и выберите "На экран домой"\n\n🤖 На Android/ПК: Выберите "Установить приложение" или "На экран домой" в меню браузера (обычно 3 точки в правом верхнем углу).');
+                  }
+                }}
+                className="p-2 text-slate-400 hover:text-slate-200 active:scale-95 transition focus:outline-none"
+                title="Скачать приложение"
+              >
+                <Download className="w-5.5 h-5.5" />
+              </button>
               <button
                 onClick={() => setShowSettings(true)}
                 className="p-2 text-slate-400 hover:text-slate-200 active:scale-95 transition focus:outline-none"

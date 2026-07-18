@@ -83,7 +83,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
   // Refs for recording logic
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const recStartTimeRef = useRef<number>(0);
+  const recAccumulatedTimeRef = useRef<number>(0);
   const recPauseTimeRef = useRef<number>(0);
   const recTimerRef = useRef<any>(null);
   const recordVolumeIntervalRef = useRef<any>(null);
@@ -523,13 +523,14 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
       };
 
       mediaRecorderRef.current.start();
-      recStartTimeRef.current = Date.now();
+      recAccumulatedTimeRef.current = 0;
       setIsRecording(true);
 
       // Start duration updates
       recTimerRef.current = setInterval(() => {
-        if (!isRecordPaused) {
-          setRecordingDuration(Math.floor((Date.now() - recStartTimeRef.current) / 1000));
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+          recAccumulatedTimeRef.current += 100;
+          setRecordingDuration(Math.floor(recAccumulatedTimeRef.current / 1000));
         }
       }, 100);
 
@@ -723,11 +724,11 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
         mediaRecorderRef.current.requestData();
         setTimeout(() => {
           if (audioChunksRef.current.length > 0) {
-            const tempBlob = new Blob(audioChunksRef.current, { type: 'audio/ogg; codecs=opus' });
+            const tempBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             const url = URL.createObjectURL(tempBlob);
             setRecordPreviewUrl(url);
           }
-        }, 50);
+        }, 150);
       } catch (e) {}
     }
   };
@@ -1398,7 +1399,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
                     />
                   )}
                   {isRecordPaused ? (
-                    <div className="flex items-center gap-3 bg-slate-800/50 py-1 px-3 rounded-full">
+                    <div className="flex items-center gap-3 bg-slate-800/50 py-1 px-3 rounded-full flex-grow mx-2">
                       <button
                         onClick={() => {
                           if (previewAudioRef.current) {
@@ -1411,15 +1412,26 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
                             }
                           }
                         }}
-                        className="text-primary hover:scale-105 transition"
+                        className="text-primary hover:scale-105 transition flex-shrink-0"
                       >
                         {isRecordPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
                       </button>
-                      <span className="text-slate-300 font-mono font-bold tracking-widest text-sm">
+                      
+                      <div className="flex items-center gap-0.5 h-6 flex-grow overflow-hidden justify-center opacity-70">
+                        {recordWaveHistory.slice(-20).map((vol, idx) => (
+                          <div
+                            key={idx}
+                            className={`w-1 rounded-full transition-all ${isRecordPlaying ? 'bg-primary' : 'bg-slate-400'}`}
+                            style={{ height: `${Math.max(10, Math.min(100, (vol / 150) * 100))}%` }}
+                          />
+                        ))}
+                      </div>
+
+                      <span className="text-slate-300 font-mono font-bold tracking-widest text-sm flex-shrink-0">
                         {Math.floor(recordingDuration / 60).toString().padStart(2, '0')}:{(recordingDuration % 60).toString().padStart(2, '0')}
                       </span>
-                      <div className="w-px h-5 bg-slate-700" />
-                      <button onClick={resumeRecording} className="text-slate-400 hover:text-white transition flex flex-col items-center">
+                      <div className="w-px h-5 bg-slate-700 flex-shrink-0" />
+                      <button onClick={resumeRecording} className="text-slate-400 hover:text-red-400 transition flex items-center flex-shrink-0">
                         <Mic className="w-5 h-5" />
                       </button>
                     </div>
