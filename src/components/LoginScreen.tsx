@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Loader2, ShieldAlert, MonitorSmartphone, QrCode } from 'lucide-react';
 import { supabaseClient } from '../lib/supabase';
+import { base64ToArrayBuffer } from '../lib/crypto';
 
 interface LoginScreenProps {
   onLoginSuccess: (token: string, masterKeysJSON: string, userData: any) => void;
@@ -36,9 +37,9 @@ export function LoginScreen({ onLoginSuccess, isError, loadingText }: LoginScree
           try {
             console.log('Received auth payload');
             const { encKey, iv, cipher } = payload.payload.data;
-            const encKeyBuf = new Uint8Array(atob(encKey).split('').map(c => c.charCodeAt(0)));
-            const ivBuf = new Uint8Array(atob(iv).split('').map(c => c.charCodeAt(0)));
-            const cipherBuf = new Uint8Array(atob(cipher).split('').map(c => c.charCodeAt(0)));
+            const encKeyBuf = base64ToArrayBuffer(encKey);
+            const ivBuf = base64ToArrayBuffer(iv);
+            const cipherBuf = base64ToArrayBuffer(cipher);
             
             const decryptedAesKeyRaw = await crypto.subtle.decrypt(
               { name: 'RSA-OAEP' },
@@ -126,14 +127,15 @@ export function LoginScreen({ onLoginSuccess, isError, loadingText }: LoginScree
             E2E Шифрование сессии
           </div>
 
-          {(window as any).deferredPrompt && (
+          {deferredPrompt && (
             <button 
               onClick={async () => {
-                const promptEvent = (window as any).deferredPrompt;
+                const promptEvent = deferredPrompt;
                 if (!promptEvent) return;
                 promptEvent.prompt();
                 const { outcome } = await promptEvent.userChoice;
                 if (outcome === 'accepted') {
+                  setDeferredPrompt(null);
                   (window as any).deferredPrompt = null;
                 }
               }}

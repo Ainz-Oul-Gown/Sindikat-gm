@@ -2,6 +2,7 @@ import { hapticImpact } from "../lib/haptics";
 import { useState, useEffect } from 'react';
 import * as idbKeyval from 'idb-keyval';
 import { supabaseClient } from '../lib/supabase';
+import { arrayBufferToBase64 } from '../lib/crypto';
 import { UserDevice } from '../types';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { ChevronLeft, Trash2, ShieldAlert, Key, Crown, Laptop, Smartphone } from 'lucide-react';
@@ -83,9 +84,9 @@ export default function DevicesScreen({ userId, onBack }: DevicesScreenProps) {
         );
         
         const payloadData = {
-          encKey: btoa(String.fromCharCode(...new Uint8Array(encryptedAesKeyBuf))),
-          iv: btoa(String.fromCharCode(...iv)),
-          cipher: btoa(String.fromCharCode(...new Uint8Array(ciphertextBuf)))
+          encKey: arrayBufferToBase64(encryptedAesKeyBuf),
+          iv: arrayBufferToBase64(iv),
+          cipher: arrayBufferToBase64(ciphertextBuf)
         };
         
         const channel = supabaseClient.channel(`qr-login-${parsed.sessionId}`);

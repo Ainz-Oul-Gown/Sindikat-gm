@@ -312,7 +312,7 @@ export default function App() {
 
     // Dynamic kill switch subscription
     supabaseClient
-      .channel('kill-switch')
+      .channel(`kill-switch-${deviceId}`)
       .on(
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'user_devices', filter: `device_id=eq.${deviceId}` },
@@ -329,7 +329,7 @@ export default function App() {
   // 4. Listen to inbound key sync requests on primary administrator device
   const listenToSyncRequests = (userId: number) => {
     supabaseClient
-      .channel('admin-sync')
+      .channel(`admin-sync-${userId}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'device_requests', filter: `user_id=eq.${userId}` },
@@ -895,7 +895,7 @@ export default function App() {
               const pubEcdsa = Object.assign({}, ecdsa, { d: undefined });
               const pubRsa = Object.assign({}, rsa, { d: undefined, p: undefined, q: undefined, dp: undefined, dq: undefined, qi: undefined });
               
-              const impEcdsa = await window.crypto.subtle.importKey('jwk', ecdsa, { name: 'ECDSA', namedCurve: 'P-384' }, true, ['sign']);
+              const impEcdsa = await window.crypto.subtle.importKey('jwk', ecdsa, { name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign']);
               const impRsa = await window.crypto.subtle.importKey('jwk', rsa, { name: 'RSA-OAEP', hash: 'SHA-256' }, true, ['decrypt']);
               
               await idbKeyval.set(`my_private_key_${user.id}`, impRsa);

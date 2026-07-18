@@ -130,9 +130,14 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
 
           if (data) {
             const keysDict = JSON.parse(data.encrypted_key);
-            const devId = localStorage.getItem('syndicate_device_id') || 'legacy';
-            const encKey = keysDict[devId] || keysDict['legacy_dev'] || keysDict['legacy'];
-            cachedKey = await decryptChatKey(encKey, currentUser.id);
+            let decrypted = null;
+            for (const key of Object.values(keysDict)) {
+              if (typeof key === 'string') {
+                decrypted = await decryptChatKey(key, currentUser.id);
+                if (decrypted) break;
+              }
+            }
+            cachedKey = decrypted;
             if (cachedKey) {
               await idbKeyval.set(`aes_key_${chat.id}`, cachedKey);
             }
@@ -162,16 +167,20 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
             .eq('user_id', currentUser.id)
             .maybeSingle();
 
-          if (data) {
-            let encKey = '';
+                    if (data) {
+            let decrypted = null;
             try {
               const keysDict = JSON.parse(data.encrypted_key);
-              const devId = localStorage.getItem('syndicate_device_id') || 'legacy';
-              encKey = keysDict[devId] || keysDict['legacy_dev'] || keysDict['legacy'];
+              for (const key of Object.values(keysDict)) {
+                if (typeof key === 'string') {
+                  decrypted = await decryptChatKey(key, currentUser.id);
+                  if (decrypted) break;
+                }
+              }
             } catch (e) {
-              encKey = data.encrypted_key;
+              decrypted = await decryptChatKey(data.encrypted_key, currentUser.id);
             }
-            cachedKey = await decryptChatKey(encKey, currentUser.id);
+            cachedKey = decrypted;
             if (cachedKey) {
               await idbKeyval.set(`aes_key_${chat.id}`, cachedKey);
             }
@@ -190,16 +199,20 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
             .eq('user_id', currentUser.id)
             .maybeSingle();
 
-          if (data) {
-            let encKey = '';
+                    if (data) {
+            let decrypted = null;
             try {
               const keysDict = JSON.parse(data.encrypted_key);
-              const devId = localStorage.getItem('syndicate_device_id') || 'legacy';
-              encKey = keysDict[devId] || keysDict['legacy_dev'] || keysDict['legacy'];
+              for (const key of Object.values(keysDict)) {
+                if (typeof key === 'string') {
+                  decrypted = await decryptChatKey(key, currentUser.id);
+                  if (decrypted) break;
+                }
+              }
             } catch (e) {
-              encKey = data.encrypted_key;
+              decrypted = await decryptChatKey(data.encrypted_key, currentUser.id);
             }
-            cachedKey = await decryptChatKey(encKey, currentUser.id);
+            cachedKey = decrypted;
             if (cachedKey) {
               await idbKeyval.set(`aes_key_${chat.id}`, cachedKey);
             }
@@ -1042,16 +1055,20 @@ hapticImpact("selection");
           .eq('user_id', currentUser.id)
           .maybeSingle();
 
-        if (keyData) {
-          let encK = '';
+                if (keyData) {
+          let decK = null;
           try {
             const keysDict = JSON.parse(keyData.encrypted_key);
-            const devId = localStorage.getItem('syndicate_device_id') || 'legacy';
-            encK = keysDict[devId] || keysDict['legacy_dev'] || keysDict['legacy'];
+            for (const key of Object.values(keysDict)) {
+              if (typeof key === 'string') {
+                decK = await decryptChatKey(key, currentUser.id);
+                if (decK) break;
+              }
+            }
           } catch (e) {
-            encK = keyData.encrypted_key;
+            decK = await decryptChatKey(keyData.encrypted_key, currentUser.id);
           }
-          pmAesKey = await decryptChatKey(encK, currentUser.id);
+          pmAesKey = decK;
         }
       }
 
@@ -1456,7 +1473,7 @@ hapticImpact("selection");
                             return (
                               <div
                                 key={idx}
-                                className={`w-1 rounded-full transition-all ${isActive ? 'bg-primary' : 'bg-slate-400'}`}
+                                className={`w-[3px] min-w-[3px] rounded-[2px] transition-all ${isActive ? 'bg-primary' : 'bg-slate-400'}`}
                                 style={{ height: `${Math.max(10, Math.min(100, (vol / maxVol) * 100))}%` }}
                               />
                             );
@@ -1487,7 +1504,7 @@ hapticImpact("selection");
                           return displayWave.map((vol, idx) => (
                             <div
                               key={idx}
-                              className="w-1 bg-red-400 rounded-full transition-all"
+                              className="w-[3px] min-w-[3px] bg-red-400 rounded-[2px] transition-all"
                               style={{ height: `${Math.max(10, Math.min(100, (vol / maxVol) * 100))}%` }}
                             />
                           ));
