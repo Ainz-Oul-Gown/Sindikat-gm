@@ -572,7 +572,7 @@ export default function App() {
       let activeChatObj: Chat;
 
       if (chatId) {
-        activeChatObj = { id: chatId, name: friend.first_name, type: 'private' };
+        activeChatObj = { id: chatId, name: friend.first_name, type: 'private', friendId: friend.tg_id };
       } else {
         // Generate new PM chat
         const { data: friendData } = await supabaseClient
@@ -623,7 +623,7 @@ export default function App() {
 
         await idbKeyval.set(`aes_key_${newChat.id}`, aesKey);
 
-        activeChatObj = { id: newChat.id, name: friend.first_name, type: 'private' };
+        activeChatObj = { id: newChat.id, name: friend.first_name, type: 'private', friendId: friend.tg_id };
       }
 
       setActiveChat(activeChatObj);

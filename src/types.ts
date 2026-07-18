@@ -16,6 +16,7 @@ export interface Chat {
   id: string;
   name: string;
   type: 'private' | 'group' | 'saved';
+  friendId?: number;
 }
 
 export interface ChatKey {

@@ -44,6 +44,8 @@ interface ChatViewProps {
   worker: Worker | null;
 }
 
+let globalAudioStream: MediaStream | null = null;
+
 export default function ChatView({ chat, currentUser, onBack, worker }: ChatViewProps) {
   const [messages, setMessages] = useState<DecryptedMessage[]>([]);
   const [inputText, setInputText] = useState('');
@@ -132,7 +134,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
         setChatKey(cachedKey || null);
       } else if (chat.type === 'private') {
         // Load friend public key to generate fingerprint
-        const friendId = parseInt(chat.id.replace(`pm_${currentUser.id}_`, '').replace(`pm_`, ''));
+        const friendId = chat.friendId || 0;
         const { data: friendData } = await supabaseClient
           .from('users')
           .select('public_key')
@@ -461,10 +463,17 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
   };
 
   // Voice Note Recording Logic
-  const startRecording = async () => {
+  const startRecording = async (e?: React.TouchEvent | React.MouseEvent) => {
+    if (e && 'touches' in e) {
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      if (!globalAudioStream) {
+        globalAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+      mediaRecorderRef.current = new MediaRecorder(globalAudioStream);
       audioChunksRef.current = [];
 
       mediaRecorderRef.current.ondataavailable = (event) => {
@@ -690,6 +699,13 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
   };
 
   const stopRecordingAndSend = () => {
+    if (isRecordLocked) return;
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+  const forceStopRecordingAndSend = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
     }
@@ -751,6 +767,21 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
       }
     } else {
       setSwipeOffset(0);
+    }
+  };
+
+  const handleMicTouchMove = (e: React.TouchEvent | any) => {
+    if (!isRecording || isRecordLocked) return;
+    const deltaX = e.touches[0].clientX - touchStartX.current;
+    const deltaY = e.touches[0].clientY - touchStartY.current;
+
+    if (deltaX < -100) {
+      cancelRecording();
+    } else if (deltaY < -100) {
+      setIsRecordingLocked(true);
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.selectionChanged();
+      }
     }
   };
 
@@ -995,7 +1026,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
     if (!confirm('Удалить друга из списка? Личные переписки станут недоступны.')) return;
 
     try {
-      const friendId = parseInt(chat.id.replace(`pm_${currentUser.id}_`, '').replace(`pm_`, ''));
+      const friendId = chat.friendId || 0;
       await supabaseClient
         .from('friendships')
         .delete()
@@ -1011,7 +1042,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
   // Debts logic
   const loadDebtsSummary = async () => {
     if (chat.type !== 'private') return;
-    const friendId = parseInt(chat.id.replace(`pm_${currentUser.id}_`, '').replace(`pm_`, ''));
+    const friendId = chat.friendId || 0;
 
     try {
       const { data, error } = await supabaseClient
@@ -1028,7 +1059,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
 
   const loadAddDebtSettings = async () => {
     if (chat.type !== 'private') return;
-    const friendId = parseInt(chat.id.replace(`pm_${currentUser.id}_`, '').replace(`pm_`, ''));
+    const friendId = chat.friendId || 0;
 
     try {
       const { data } = await supabaseClient.from('currencies').select('*').eq('owner_id', friendId);
@@ -1050,7 +1081,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
       return;
     }
 
-    const friendId = parseInt(chat.id.replace(`pm_${currentUser.id}_`, '').replace(`pm_`, ''));
+    const friendId = chat.friendId || 0;
     const price = selectedCurrency ? selectedCurrency.rub_value : 1;
     const currencyName = selectedCurrency ? selectedCurrency.name : 'Руб.';
 
@@ -1289,7 +1320,28 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
         )}
 
         {/* Form controls */}
-        <div className="flex items-end gap-3 w-full">
+        <div className="flex items-end gap-3 w-full relative">
+          {isRecording && (
+            <div className="absolute inset-y-0 left-0 right-[56px] bg-slate-900 z-20 flex items-center justify-between px-2 rounded-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+                <span className="text-slate-200 font-mono font-bold tracking-widest text-lg">
+                  {Math.floor(recordingDuration / 60).toString().padStart(2, '0')}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
+              {!isRecordLocked ? (
+                <div className="flex flex-col items-end gap-1 select-none pointer-events-none mr-2">
+                  <span className="text-slate-400 text-[10px] uppercase font-bold flex items-center gap-1"><span className="text-lg leading-none">&larr;</span> Отмена</span>
+                  <span className="text-slate-400 text-[10px] uppercase font-bold flex items-center gap-1">Замок <span className="text-lg leading-none">&uarr;</span></span>
+                </div>
+              ) : (
+                <button onClick={cancelRecording} className="text-red-400 text-sm font-semibold py-2 px-3 hover:bg-red-400/10 rounded-xl transition">
+                  Отмена
+                </button>
+              )}
+            </div>
+          )}
+
           <textarea
             ref={inputRef}
             rows={1}
@@ -1305,10 +1357,10 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
             className="flex-grow bg-slate-950 border border-slate-850 text-slate-200 rounded-2xl px-4 py-2.5 text-base focus:border-primary outline-none max-h-[120px] resize-none overflow-y-auto leading-[20px] min-h-[42px]"
           />
 
-          {inputText.trim() ? (
+          {inputText.trim() || isRecordLocked ? (
             <button
-              onClick={() => handleSendMessage()}
-              className="w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center active:scale-95 transition-all shadow-lg shadow-primary/10 focus:outline-none"
+              onClick={() => isRecordLocked ? forceStopRecordingAndSend() : handleSendMessage()}
+              className="w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center active:scale-95 transition-all shadow-lg shadow-primary/10 focus:outline-none z-30 flex-shrink-0"
             >
               <Send className="w-5 h-5 transform rotate-[-15deg] translate-x-[-1px] translate-y-[1px]" />
             </button>
@@ -1318,8 +1370,10 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
               onTouchStart={startRecording}
               onMouseUp={stopRecordingAndSend}
               onTouchEnd={stopRecordingAndSend}
+              onTouchMove={handleMicTouchMove}
+              onMouseMove={handleMicTouchMove}
               style={{ transform: `scale(${micPulseScale})` }}
-              className="w-11 h-11 rounded-full bg-slate-900 border border-slate-800 text-slate-300 flex items-center justify-center active:bg-slate-800 transition shadow-lg focus:outline-none touch-none select-none"
+              className={`w-11 h-11 rounded-full border text-slate-300 flex items-center justify-center transition shadow-lg focus:outline-none touch-none select-none z-30 flex-shrink-0 ${isRecording ? 'bg-red-500 border-red-500 text-white shadow-red-500/20' : 'bg-slate-900 border-slate-800 active:bg-slate-800'}`}
             >
               <Mic className="w-5 h-5" />
             </button>
@@ -1444,7 +1498,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
             ) : (
               <div className="flex flex-col gap-4 divide-y divide-slate-900">
                 {debts.map((d, idx) => {
-                  const friendId = parseInt(chat.id.replace(`pm_${currentUser.id}_`, '').replace(`pm_`, ''));
+                  const friendId = chat.friendId || 0;
                   const amIDebtor = d.debtor_id === currentUser.id;
 
                   return (
