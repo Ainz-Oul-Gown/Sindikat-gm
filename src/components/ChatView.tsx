@@ -49,9 +49,10 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
   const [inputText, setInputText] = useState('');
   const [chatKey, setChatKey] = useState<CryptoKey | null>(null);
 
-  // Pagination states
+  // Pagination & Loading states
   const [renderLimit, setRenderLimit] = useState(30);
   const [hasMoreInHistory, setHasMoreInHistory] = useState(false);
+  const [isLoadingChat, setIsLoadingChat] = useState(true);
 
   // Nav, modals and screens
   const [activeModal, setActiveModal] = useState<'none' | 'info' | 'search' | 'debts' | 'add-debt' | 'invite-friend'>('none');
@@ -64,6 +65,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const swipingMsgId = useRef<string | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState<number>(0);
 
   // Recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -274,6 +276,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
 
   // Load message history with E2EE decrypt
   const loadHistory = async (key: CryptoKey) => {
+    setIsLoadingChat(true);
     try {
       // 1. Check local cache
       const cached = (await idbKeyval.get<any>(`chat_hist_${chat.id}`)) || { history: [] };
@@ -285,6 +288,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
         );
         finalMessages = decryptedCache;
         setMessages(decryptedCache);
+        setIsLoadingChat(false);
       }
 
       // 2. Fetch new messages from Supabase in background
@@ -317,6 +321,8 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsLoadingChat(false);
     }
   };
 
@@ -709,6 +715,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
     swipingMsgId.current = msgId;
+    setSwipeOffset(0);
   };
 
   const handleTouchMove = (e: any, msgId: string) => {
@@ -718,31 +725,38 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
     const deltaY = e.touches[0].clientY - touchStartY.current;
 
     // Horizonal swipe verification
-    if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) && deltaX < 0) {
-      // Trigger reply UI preview
-      const targetMsg = messages.find((m) => m.id === msgId);
-      if (targetMsg) {
-        let cleanText = targetMsg.text;
-        if (cleanText.startsWith('[VOICE]:')) cleanText = '🎤 Голосовое сообщение';
-        if (cleanText.startsWith('[GROUP_INVITE]:')) cleanText = '🎫 Приглашение в группу';
+    if (deltaX < 0 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      setSwipeOffset(Math.max(deltaX, -80)); // Limit visual pull
+      if (Math.abs(deltaX) > 50) {
+        // Trigger reply UI preview
+        const targetMsg = messages.find((m) => m.id === msgId);
+        if (targetMsg) {
+          let cleanText = targetMsg.text;
+          if (cleanText.startsWith('[VOICE]:')) cleanText = '🎤 Голосовое сообщение';
+          if (cleanText.startsWith('[GROUP_INVITE]:')) cleanText = '🎫 Приглашение в группу';
 
-        setReplyTo({
-          id: targetMsg.id,
-          name: targetMsg.isMine ? 'Я' : getSenderName(targetMsg.sender_id),
-          text: cleanText,
-        });
+          setReplyTo({
+            id: targetMsg.id,
+            name: targetMsg.isMine ? 'Я' : getSenderName(targetMsg.sender_id),
+            text: cleanText,
+          });
 
-        if (window.Telegram?.WebApp?.HapticFeedback) {
-          window.Telegram.WebApp.HapticFeedback.selectionChanged();
+          if (window.Telegram?.WebApp?.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.selectionChanged();
+          }
+
+          swipingMsgId.current = null;
+          setSwipeOffset(0);
         }
-
-        swipingMsgId.current = null;
       }
+    } else {
+      setSwipeOffset(0);
     }
   };
 
   const handleTouchEnd = () => {
     swipingMsgId.current = null;
+    setSwipeOffset(0);
   };
 
   const handleScrollToMessage = (targetId: string) => {
@@ -1074,7 +1088,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
   const isGroup = chat.type === 'group';
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 overflow-hidden relative select-none animate-fade-in text-slate-100">
+    <div className="flex-1 min-h-0 w-full flex flex-col bg-slate-950 relative select-none animate-fade-in text-slate-100">
       {/* Top Header info */}
       <div className="flex items-center justify-between border-b border-slate-900 pb-3 p-4 bg-slate-900/40 relative z-10 flex-shrink-0">
         <button
@@ -1121,27 +1135,44 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
           onScroll={handleScroll}
           className="messages-area h-full overflow-y-auto p-4 flex flex-col-reverse gap-3.5 select-text"
         >
-          {messages
-            .slice()
-            .reverse()
-            .slice(0, renderLimit)
-            .map((m) => {
-              const msgDate = new Date(m.created_at);
-              const timeStr = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          {isLoadingChat ? (
+            <div className="flex flex-col gap-4 opacity-50 pointer-events-none w-full">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className={`flex w-full ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`w-2/3 h-16 rounded-2xl animate-pulse ${i % 2 === 0 ? 'bg-primary/20' : 'bg-slate-800'}`} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            messages
+              .slice()
+              .reverse()
+              .slice(0, renderLimit)
+              .map((m) => {
+                const msgDate = new Date(m.created_at);
+                const timeStr = msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const isSwiping = swipingMsgId.current === m.id;
 
-              return (
-                <div
-                  key={m.id}
-                  id={`msg-${m.id}`}
-                  onTouchStart={(e) => handleTouchStart(e, m.id)}
-                  onTouchMove={(e) => handleTouchMove(e, m.id)}
-                  onTouchEnd={handleTouchEnd}
-                  className={`msg-bubble flex flex-col px-4 py-3 relative max-w-[85%] ${
-                    m.isMine
-                      ? 'msg-mine self-end bg-primary text-white rounded-[18px] rounded-br-[4px] shadow-md shadow-primary/10'
-                      : 'msg-other self-start bg-slate-900 border border-slate-850 text-slate-100 rounded-[18px] rounded-bl-[4px]'
-                  }`}
-                >
+                return (
+                  <div
+                    key={m.id}
+                    id={`msg-${m.id}`}
+                    onTouchStart={(e) => handleTouchStart(e, m.id)}
+                    onTouchMove={(e) => handleTouchMove(e, m.id)}
+                    onTouchEnd={handleTouchEnd}
+                    className={`flex w-full relative ${m.isMine ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      style={{
+                        transform: isSwiping ? `translateX(${swipeOffset}px)` : 'translateX(0px)',
+                        transition: isSwiping ? 'none' : 'transform 0.2s ease-out',
+                      }}
+                      className={`msg-bubble flex flex-col px-4 py-3 relative max-w-[85%] break-words overflow-hidden ${
+                        m.isMine
+                          ? 'msg-mine bg-primary text-white rounded-[18px] rounded-br-[4px] shadow-md shadow-primary/10'
+                          : 'msg-other bg-slate-900 border border-slate-850 text-slate-100 rounded-[18px] rounded-bl-[4px]'
+                      }`}
+                    >
                   {/* Sender Name in group */}
                   {isGroup && !m.isMine && (
                     <div className="sender-name text-xs font-bold text-primary mb-1">
@@ -1212,9 +1243,11 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
                   >
                     {timeStr}
                   </span>
+                    </div>
                 </div>
               );
-            })}
+            })
+          )}
         </div>
 
         {/* Scroll back bottom float button */}
@@ -1473,19 +1506,25 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
               <label className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">
                 В чем принимает друг
               </label>
-              <select
-                onChange={(e) => {
-                  const selected = currencies.find((c) => c.id === e.target.value);
-                  setSelectedCurrency(selected || null);
-                }}
-                className="w-full bg-slate-950 border border-slate-900 text-slate-200 rounded-xl px-4 py-3 text-base focus:border-primary outline-none"
-              >
-                {currencies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} (Курс: {c.rub_value} ₽)
-                  </option>
-                ))}
-              </select>
+              <div className="relative w-full">
+                <select
+                  onChange={(e) => {
+                    const selected = currencies.find((c) => c.id === e.target.value);
+                    setSelectedCurrency(selected || null);
+                  }}
+                  className="w-full bg-slate-950 border border-slate-900 text-slate-200 rounded-xl px-4 py-3 text-base focus:border-primary outline-none appearance-none"
+                >
+                  {currencies.length === 0 && <option value="">Загрузка...</option>}
+                  {currencies.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} (Курс: {c.rub_value} ₽)
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+                  <ArrowDown className="w-4 h-4" />
+                </div>
+              </div>
             </div>
 
             {selectedCurrency && debtRubles && parseFloat(debtRubles) > 0 && (

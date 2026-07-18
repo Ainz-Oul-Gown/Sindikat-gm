@@ -84,7 +84,7 @@ export async function verifySignature(
   if (!signatureB64) return false;
 
   if (pubKeyCache[senderId] === undefined) {
-    const { data } = await supabaseClient.from('users').select('public_key').eq('tg_id', senderId).single();
+    const { data } = await supabaseClient.from('users').select('public_key').eq('tg_id', senderId).maybeSingle();
     pubKeyCache[senderId] = data ? data.public_key : null;
   }
 
@@ -295,7 +295,7 @@ export async function checkCryptoKeys(userId: number): Promise<{ ready: boolean;
   const signKey = await idbKeyval.get(`my_sign_key_${userId}`);
 
   // Query database
-  const { data: userData } = await supabaseClient.from('users').select('public_key').eq('tg_id', userId).single();
+  const { data: userData } = await supabaseClient.from('users').select('public_key').eq('tg_id', userId).maybeSingle();
 
   let publicKeysDict: Record<string, any> = {};
   let hasKeysInDatabase = false;
