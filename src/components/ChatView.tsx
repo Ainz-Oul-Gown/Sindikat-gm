@@ -552,7 +552,7 @@ hapticImpact("light");
         const tempVolumes: number[] = [];
 
         recordVolumeIntervalRef.current = setInterval(() => {
-          if (!isRecordPaused) {
+          if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             analyser.getByteFrequencyData(dataArray);
             let sum = 0;
             for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
@@ -744,6 +744,8 @@ hapticImpact("medium");
       recStartTimeRef.current = Date.now();
       mediaRecorderRef.current.resume();
       setIsRecordPaused(false);
+
+      
     }
   };
 
@@ -751,6 +753,13 @@ hapticImpact("medium");
     audioChunksRef.current = [];
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.onstop = () => {
+        clearInterval(recTimerRef.current);
+        clearInterval(recordVolumeIntervalRef.current);
+        if (audioCtxRef.current) {
+          audioCtxRef.current.close().catch(()=>{});
+          audioCtxRef.current = null;
+          analyserRef.current = null;
+        }
         setIsRecording(false);
         setIsRecordingLocked(false);
         setIsRecordPaused(false);
@@ -1425,16 +1434,34 @@ hapticImpact("selection");
                       </button>
                       
                       <div className="flex items-center gap-0.5 h-6 flex-grow overflow-hidden justify-center opacity-70">
-                        {recordWaveHistory.slice(-20).map((vol, idx) => {
-                          const isActive = idx < Math.floor(recordPreviewProgress * 20);
-                          return (
-                            <div
-                              key={idx}
-                              className={`w-1 rounded-full transition-all ${isActive ? 'bg-primary' : 'bg-slate-400'}`}
-                              style={{ height: `${Math.max(10, Math.min(100, (vol / 150) * 100))}%` }}
-                            />
-                          );
-                        })}
+                        {(function() {
+                          const bars = 30;
+                          let displayWave = [];
+                          if (recordWaveHistory.length <= bars) {
+                            displayWave = [...recordWaveHistory];
+                          } else {
+                            const step = recordWaveHistory.length / bars;
+                            for (let i = 0; i < bars; i++) {
+                              const start = Math.floor(i * step);
+                              const end = Math.floor((i + 1) * step);
+                              const chunk = recordWaveHistory.slice(start, end);
+                              const avg = chunk.length > 0 ? chunk.reduce((a, b) => a + b, 0) / chunk.length : 0;
+                              displayWave.push(avg);
+                            }
+                          }
+                          const maxVol = Math.max(...displayWave, 50);
+                          
+                          return displayWave.map((vol, idx) => {
+                            const isActive = idx < Math.floor(recordPreviewProgress * displayWave.length);
+                            return (
+                              <div
+                                key={idx}
+                                className={`w-1 rounded-full transition-all ${isActive ? 'bg-primary' : 'bg-slate-400'}`}
+                                style={{ height: `${Math.max(10, Math.min(100, (vol / maxVol) * 100))}%` }}
+                              />
+                            );
+                          });
+                        })()}
                       </div>
 
                       <span className="text-slate-300 font-mono font-bold tracking-widest text-sm flex-shrink-0">
@@ -1454,13 +1481,30 @@ hapticImpact("selection");
                         {Math.floor(recordingDuration / 60).toString().padStart(2, '0')}:{(recordingDuration % 60).toString().padStart(2, '0')}
                       </span>
                       <div className="flex items-center gap-0.5 h-6 flex-grow overflow-hidden justify-end">
-                        {recordWaveHistory.slice(-15).map((vol, idx) => (
-                          <div
-                            key={idx}
-                            className="w-1 bg-red-400 rounded-full transition-all"
-                            style={{ height: `${Math.max(10, Math.min(100, (vol / 150) * 100))}%` }}
-                          />
-                        ))}
+                        {(function() {
+                          const bars = 30;
+                          let displayWave = [];
+                          if (recordWaveHistory.length <= bars) {
+                            displayWave = [...recordWaveHistory];
+                          } else {
+                            const step = recordWaveHistory.length / bars;
+                            for (let i = 0; i < bars; i++) {
+                              const start = Math.floor(i * step);
+                              const end = Math.floor((i + 1) * step);
+                              const chunk = recordWaveHistory.slice(start, end);
+                              const avg = chunk.length > 0 ? chunk.reduce((a, b) => a + b, 0) / chunk.length : 0;
+                              displayWave.push(avg);
+                            }
+                          }
+                          const maxVol = Math.max(...displayWave, 50);
+                          return displayWave.map((vol, idx) => (
+                            <div
+                              key={idx}
+                              className="w-1 bg-red-400 rounded-full transition-all"
+                              style={{ height: `${Math.max(10, Math.min(100, (vol / maxVol) * 100))}%` }}
+                            />
+                          ));
+                        })()}
                       </div>
                     </div>
                   )}

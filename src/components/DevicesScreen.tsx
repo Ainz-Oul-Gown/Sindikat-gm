@@ -1,7 +1,9 @@
 import { hapticImpact } from "../lib/haptics";
 import { useState, useEffect } from 'react';
+import * as idbKeyval from 'idb-keyval';
 import { supabaseClient } from '../lib/supabase';
 import { UserDevice } from '../types';
+import { Scanner } from '@yudiel/react-qr-scanner';
 import { ChevronLeft, Trash2, ShieldAlert, Key, Crown, Laptop, Smartphone } from 'lucide-react';
 
 interface DevicesScreenProps {
@@ -12,6 +14,75 @@ interface DevicesScreenProps {
 export default function DevicesScreen({ userId, onBack }: DevicesScreenProps) {
   const [devices, setDevices] = useState<UserDevice[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+
+  
+  const handleScan = async (scannedData: string) => {
+    try {
+      const parsed = JSON.parse(scannedData);
+      if (parsed.sessionId && parsed.publicKey) {
+        setIsScanning(false);
+        setLoading(true);
+        // encrypt current token and master keys
+        const token = localStorage.getItem('synd_token');
+        const myPrivRsa = await idbKeyval.get(`my_private_key_${userId}`);
+        const myPrivEcdsa = await idbKeyval.get(`my_sign_key_${userId}`);
+        
+        let masterKeysJSON = '';
+        if (myPrivRsa && myPrivEcdsa) {
+          const rsaJwk = await window.crypto.subtle.exportKey('jwk', myPrivRsa);
+          const ecdsaJwk = await window.crypto.subtle.exportKey('jwk', myPrivEcdsa);
+          masterKeysJSON = JSON.stringify({ rsa: rsaJwk, ecdsa: ecdsaJwk });
+        }
+        
+        const { data: userData } = await supabaseClient.from('users').select('*').eq('id', userId).single();
+        
+        const payloadObj = {
+          token,
+          masterKeys: masterKeysJSON,
+          user: userData
+        };
+        
+        const payloadStr = JSON.stringify(payloadObj);
+        const payloadBytes = new TextEncoder().encode(payloadStr);
+        
+        // Import public key
+        const qrPubKeyBinary = new Uint8Array(
+          atob(parsed.publicKey.replace(/-----[^-]+-----/g, '').replace(/\s+/g, ''))
+            .split('')
+            .map(c => c.charCodeAt(0))
+        );
+        const importedPubKey = await crypto.subtle.importKey(
+          'spki',
+          qrPubKeyBinary,
+          { name: 'RSA-OAEP', hash: 'SHA-256' },
+          false,
+          ['encrypt']
+        );
+        
+        const encryptedBuffer = await crypto.subtle.encrypt(
+          { name: 'RSA-OAEP' },
+          importedPubKey,
+          payloadBytes
+        );
+        
+        const encryptedStr = btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer)));
+        
+        await supabaseClient.channel(`qr-login-${parsed.sessionId}`).send({
+          type: 'broadcast',
+          event: 'auth-payload',
+          payload: { data: encryptedStr }
+        });
+        
+        alert('Устройство успешно авторизовано!');
+      }
+    } catch (e) {
+      console.error('Scan error', e);
+      // ignore invalid QR codes
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getDeviceId = () => {
     let did = localStorage.getItem('syndicate_device_id');
@@ -88,6 +159,33 @@ hapticImpact("success");
       <div className="text-slate-400 text-xs text-center leading-relaxed mb-5 bg-slate-900/40 border border-slate-900/80 p-4 rounded-xl">
         Самое первое устройство — главное. Новые устройства получают права на удаление администраторов только через 7 дней.
       </div>
+
+      
+      {isScanning ? (
+        <div className="w-full aspect-square bg-black rounded-xl overflow-hidden relative mb-4">
+          <Scanner 
+            onScan={(result) => {
+              if (result && result.length > 0) {
+                handleScan(result[0].rawValue);
+              }
+            }} 
+          />
+          <button 
+            onClick={() => setIsScanning(false)}
+            className="absolute top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg font-semibold"
+          >
+            Отмена
+          </button>
+        </div>
+      ) : (
+        <button 
+          onClick={() => setIsScanning(true)}
+          className="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors mb-4 flex items-center justify-center gap-2"
+        >
+          <Key className="w-5 h-5 text-primary" />
+          Авторизовать новое устройство (QR)
+        </button>
+      )}
 
       <div className="flex-grow overflow-y-auto flex flex-col gap-2.5">
         {loading ? (

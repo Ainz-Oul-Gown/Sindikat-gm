@@ -1,3 +1,4 @@
+import { LoginScreen } from './components/LoginScreen';
 import { useState, useEffect, useRef } from 'react';
 import * as idbKeyval from 'idb-keyval';
 import {
@@ -42,8 +43,7 @@ export default function App() {
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-
+  
   // Local PIN lock
   const [isPinLocked, setIsPinLocked] = useState(false);
   const [pinMode, setPinMode] = useState<'unlock' | 'setup_1' | 'setup_2' | 'disable_normal' | 'disable_panic'>('unlock');
@@ -454,7 +454,7 @@ export default function App() {
       }
 
       // Prepare secondary parallel queries
-      const promises: Promise<any>[] = [];
+      const promises: any[] = [];
 
       // 1. Friends
       const friendIds = relsArray
@@ -851,15 +851,9 @@ export default function App() {
     const themeColor = localStorage.getItem('synd_theme_color') || '#0A84FF';
     applyTheme(themeColor);
 
-    const handleBeforeInstallPrompt = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      if (workerRef.current) {
+            if (workerRef.current) {
         workerRef.current.terminate();
       }
     };
@@ -889,31 +883,34 @@ export default function App() {
   if (!isAuth) {
     const isError = loadingText.includes('Вам необходимо') || loadingText.includes('Ошибка');
     return (
-      <div className="flex flex-col items-center justify-center h-[100dvh] bg-slate-950 p-6 text-center select-none text-slate-100">
-        {!isError ? (
-          <Loader2 className="w-12 h-12 text-primary animate-spin mb-5" />
-        ) : (
-          <ShieldAlert className="w-12 h-12 text-rose-500 mb-5" />
-        )}
-        <p className="text-slate-300 text-base max-w-[280px] leading-relaxed font-semibold">
-          {loadingText}
-        </p>
-        
-        {isError && (
-          <div className="mt-8 flex flex-col gap-4 w-full max-w-[300px]">
-            <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-left">
-              <h4 className="text-slate-200 font-bold mb-2 flex items-center gap-2">
-                <Smartphone className="w-4 h-4 text-primary" /> Как войти?
-              </h4>
-              <ol className="text-sm text-slate-400 space-y-2 list-decimal list-inside marker:text-primary">
-                <li>Откройте Синдикат в Telegram</li>
-                <li>Нажмите значок скачивания в правом верхнем углу</li>
-                <li>Скопируйте ссылку и откройте её в этом браузере</li>
-              </ol>
-            </div>
-          </div>
-        )}
-      </div>
+      <LoginScreen 
+        isError={isError} 
+        loadingText={loadingText} 
+        onLoginSuccess={async (token, masterKeysJSON, user) => {
+          localStorage.setItem('synd_token', token);
+          
+          if (masterKeysJSON) {
+            try {
+              const { rsa, ecdsa } = JSON.parse(masterKeysJSON);
+              const pubEcdsa = Object.assign({}, ecdsa, { d: undefined });
+              const pubRsa = Object.assign({}, rsa, { d: undefined, p: undefined, q: undefined, dp: undefined, dq: undefined, qi: undefined });
+              
+              const impEcdsa = await window.crypto.subtle.importKey('jwk', ecdsa, { name: 'ECDSA', namedCurve: 'P-384' }, true, ['sign']);
+              const impRsa = await window.crypto.subtle.importKey('jwk', rsa, { name: 'RSA-OAEP', hash: 'SHA-256' }, true, ['decrypt']);
+              
+              await idbKeyval.set(`my_private_key_${user.id}`, impRsa);
+              await idbKeyval.set(`my_sign_key_${user.id}`, impEcdsa);
+              
+              localStorage.setItem('synd_my_pubkey_cache', JSON.stringify(pubRsa));
+              localStorage.setItem('synd_my_pubsign_cache', JSON.stringify(pubEcdsa));
+              
+            } catch (e) {
+              console.error('Failed to import synced master keys:', e);
+            }
+          }
+          window.location.reload();
+        }}
+      />
     );
   }
 
@@ -1017,11 +1014,12 @@ export default function App() {
                     } else {
                       tgWebApp.openLink(window.location.href);
                     }
-                  } else if (deferredPrompt) {
+                  } else if ((window as any).deferredPrompt) {
+                      const deferredPrompt = (window as any).deferredPrompt;
                     deferredPrompt.prompt();
                     const { outcome } = await deferredPrompt.userChoice;
                     if (outcome === 'accepted') {
-                      setDeferredPrompt(null);
+                      (window as any).deferredPrompt = null;
                     }
                   } else {
                     setShowInstallPrompt(true);
