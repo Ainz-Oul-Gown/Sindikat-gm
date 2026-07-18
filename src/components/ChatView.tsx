@@ -117,7 +117,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
             .select('encrypted_key')
             .eq('chat_id', chat.id)
             .eq('user_id', currentUser.id)
-            .single();
+            .maybeSingle();
 
           if (data) {
             const keysDict = JSON.parse(data.encrypted_key);
@@ -137,7 +137,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
           .from('users')
           .select('public_key')
           .eq('tg_id', friendId)
-          .single();
+          .maybeSingle();
 
         if (friendData?.public_key) {
           const fp = await getFingerprint(friendData.public_key);
@@ -151,7 +151,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
             .select('encrypted_key')
             .eq('chat_id', chat.id)
             .eq('user_id', currentUser.id)
-            .single();
+            .maybeSingle();
 
           if (data) {
             let encKey = '';
@@ -179,7 +179,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
             .select('encrypted_key')
             .eq('chat_id', chat.id)
             .eq('user_id', currentUser.id)
-            .single();
+            .maybeSingle();
 
           if (data) {
             let encKey = '';
@@ -604,7 +604,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
           encrypted_text: encryptedText,
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (insertError) throw insertError;
 
@@ -923,7 +923,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
         .from('users')
         .select('public_key')
         .eq('tg_id', friendId)
-        .single();
+        .maybeSingle();
 
       if (!friendData) return;
 
@@ -957,7 +957,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
           .select('encrypted_key')
           .eq('chat_id', pmChatId)
           .eq('user_id', currentUser.id)
-          .single();
+          .maybeSingle();
 
         if (keyData) {
           let encK = '';
@@ -1244,6 +1244,15 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
                     {timeStr}
                   </span>
                     </div>
+
+                  {isSwiping && swipeOffset < 0 && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 text-slate-300 z-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                      </svg>
+                    </div>
+                  )}
+
                 </div>
               );
             })

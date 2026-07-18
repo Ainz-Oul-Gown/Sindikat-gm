@@ -72,7 +72,7 @@ export default function App() {
   };
 
   // 1. Authenticate user from Telegram WebApp context or custom saved JWT tokens
-  const authUser = async (): Promise<boolean> => {
+  const authUser = async (): Promise<{ id: number; first_name: string } | null> => {
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const urlToken = hashParams.get('token');
     const tgInitData = window.Telegram?.WebApp?.initData;
@@ -89,8 +89,9 @@ export default function App() {
 
         if (result && result.token) {
           setSupabaseToken(result.token);
-          setCurrentUser({ id: result.id, first_name: result.first_name });
-          return true;
+          const userObj = { id: result.id, first_name: result.first_name };
+          setCurrentUser(userObj);
+          return userObj;
         } else if (oldToken) {
           setSupabaseToken(oldToken);
         }
@@ -110,19 +111,20 @@ export default function App() {
           .from('users')
           .select('first_name')
           .eq('tg_id', payload.tg_id)
-          .single();
+          .maybeSingle();
 
         if (data) {
-          setCurrentUser({ id: payload.tg_id, first_name: data.first_name });
+          const userObj = { id: payload.tg_id, first_name: data.first_name };
+          setCurrentUser(userObj);
           if (urlToken) {
             window.history.replaceState({}, document.title, window.location.pathname);
           }
-          return true;
+          return userObj;
         }
       }
     }
 
-    return false;
+    return null;
   };
 
   // 2. Perform RSA/ECDSA key synchronizations (Decentralized Master Sync protocol)
@@ -157,7 +159,7 @@ export default function App() {
           status: 'pending',
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         alert('Ошибка подачи заявки на синхронизацию: ' + error.message);
@@ -196,7 +198,7 @@ export default function App() {
           .from('device_requests')
           .select('*')
           .eq('id', requestData.id)
-          .single();
+          .maybeSingle();
 
         if (data && data.status === 'approved') {
           clearInterval(poll);
@@ -411,60 +413,77 @@ export default function App() {
   // 5. Query active chats, friends and pending requests lists
   const loadChatsAndFriends = async (userId: number) => {
     try {
-      // Retrieve relationships
-      const { data: rels } = await supabaseClient
-        .from('friendships')
-        .select('*')
-        .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`);
+      // Parallelize base queries
+      const [relsRes, myKeysRes] = await Promise.all([
+        supabaseClient
+          .from('friendships')
+          .select('*')
+          .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`),
+        supabaseClient
+          .from('chat_keys')
+          .select('chat_id')
+          .eq('user_id', userId)
+      ]);
 
-      const relsArray = rels || [];
+      const relsArray = relsRes.data || [];
+      const myKeys = myKeysRes.data;
 
-      // Extrapolate accepted friend ids
+      // Prepare secondary parallel queries
+      const promises: Promise<void>[] = [];
+
+      // 1. Friends
       const friendIds = relsArray
         .filter((r) => r.status === 'accepted')
         .map((r) => (r.requester_id === userId ? r.addressee_id : r.requester_id));
 
       if (friendIds.length > 0) {
-        const { data: users } = await supabaseClient.from('users').select('*').in('tg_id', friendIds);
-        setFriends(users || []);
-        localStorage.setItem('synd_cached_users', JSON.stringify(users || []));
+        promises.push(
+          supabaseClient.from('users').select('*').in('tg_id', friendIds).then(({ data: users }) => {
+            setFriends(users || []);
+            localStorage.setItem('synd_cached_users', JSON.stringify(users || []));
+          })
+        );
+      } else {
+        setFriends([]);
       }
 
-      // Extrapolate pending requests
+      // 2. Pending Requests
       const pendingRels = relsArray.filter((r) => r.status === 'pending' && r.addressee_id === userId);
       if (pendingRels.length > 0) {
         const reqUserIds = pendingRels.map((r) => r.requester_id);
-        const { data: pUsers } = await supabaseClient.from('users').select('*').in('tg_id', reqUserIds);
-        if (pUsers) {
-          const reqs = pendingRels
-            .map((rel) => ({
-              id: rel.id,
-              user: pUsers.find((u) => u.tg_id === rel.requester_id),
-            }))
-            .filter((r) => r.user);
-          setFriendRequests(reqs);
-        }
+        promises.push(
+          supabaseClient.from('users').select('*').in('tg_id', reqUserIds).then(({ data: pUsers }) => {
+            if (pUsers) {
+              const reqs = pendingRels
+                .map((rel) => ({
+                  id: rel.id,
+                  user: pUsers.find((u) => u.tg_id === rel.requester_id),
+                }))
+                .filter((r) => r.user);
+              setFriendRequests(reqs as any);
+            }
+          })
+        );
       } else {
         setFriendRequests([]);
       }
 
-      // Retrieve chat lists
-      const { data: myKeys } = await supabaseClient
-        .from('chat_keys')
-        .select('chat_id')
-        .eq('user_id', userId);
-
+      // 3. Chat Lists
       if (myKeys && myKeys.length > 0) {
         const chatIds = myKeys.map((k) => k.chat_id);
-        const { data: chatsData } = await supabaseClient
-          .from('chats')
-          .select('*')
-          .in('id', chatIds);
-
-        const groups = (chatsData || []).filter((c) => c.type === 'group');
-        setGroupChats(groups);
-        localStorage.setItem('synd_cached_groups', JSON.stringify(groups));
+        promises.push(
+          supabaseClient.from('chats').select('*').in('id', chatIds).then(({ data: chatsData }) => {
+            const groups = (chatsData || []).filter((c) => c.type === 'group');
+            setGroupChats(groups);
+            localStorage.setItem('synd_cached_groups', JSON.stringify(groups));
+          })
+        );
+      } else {
+        setGroupChats([]);
       }
+
+      // Execute secondary queries in parallel
+      await Promise.all(promises);
     } catch (e) {
       console.error(e);
     }
@@ -504,14 +523,14 @@ export default function App() {
           .from('users')
           .select('public_key')
           .eq('tg_id', currentUser.id)
-          .single();
+          .maybeSingle();
 
         const aesKey = await generateChatKey();
         const { data: newChat } = await supabaseClient
           .from('chats')
           .insert({ name: 'saved', type: 'saved' })
           .select()
-          .single();
+          .maybeSingle();
 
         let myKeysJson = JSON.parse(myData?.public_key || '{}');
         if (myKeysJson.kty) myKeysJson = { legacy: myKeysJson };
@@ -560,20 +579,20 @@ export default function App() {
           .from('users')
           .select('public_key')
           .eq('tg_id', friend.tg_id)
-          .single();
+          .maybeSingle();
 
         const { data: myData } = await supabaseClient
           .from('users')
           .select('public_key')
           .eq('tg_id', currentUser.id)
-          .single();
+          .maybeSingle();
 
         const aesKey = await generateChatKey();
         const { data: newChat } = await supabaseClient
           .from('chats')
           .insert({ name: 'private', type: 'private' })
           .select()
-          .single();
+          .maybeSingle();
 
         let friendKeys = JSON.parse(friendData?.public_key || '{}');
         if (friendKeys.kty) friendKeys = { legacy: friendKeys };
@@ -638,7 +657,7 @@ export default function App() {
         .from('users')
         .select('id')
         .eq('tg_id', targetId)
-        .single();
+        .maybeSingle();
 
       if (!user) {
         alert('Пользователь не зарегистрирован!');
@@ -680,13 +699,13 @@ export default function App() {
         .from('chats')
         .insert({ name: gName, type: 'group' })
         .select()
-        .single();
+        .maybeSingle();
 
       const { data: myData } = await supabaseClient
         .from('users')
         .select('public_key')
         .eq('tg_id', currentUser.id)
-        .single();
+        .maybeSingle();
 
       let myKeys = JSON.parse(myData?.public_key || '{}');
       if (myKeys.kty) myKeys = { legacy: myKeys };
@@ -760,16 +779,18 @@ export default function App() {
         if (cachedUsers) setFriends(JSON.parse(cachedUsers));
         if (cachedGroups) setGroupChats(JSON.parse(cachedGroups));
 
-        const authenticated = await authUser();
-        if (authenticated && currentUser) {
+        const authData = await authUser();
+        const activeUser = authData || currentUser;
+
+        if (activeUser) {
           setIsAuth(true);
 
           // Listen to kill switches and requests
-          registerDevice(currentUser.id);
-          listenToSyncRequests(currentUser.id);
+          registerDevice(activeUser.id);
+          listenToSyncRequests(activeUser.id);
 
           // Check if local keys exist or we are on a new device
-          const keyStatus = await checkCryptoKeys(currentUser.id);
+          const keyStatus = await checkCryptoKeys(activeUser.id);
           if (keyStatus.ready) {
             // Check local PIN code status
             if (localStorage.getItem('synd_pin_hash')) {
@@ -778,7 +799,7 @@ export default function App() {
             }
 
             // Sync data
-            loadChatsAndFriends(currentUser.id);
+            loadChatsAndFriends(activeUser.id);
 
             // Initialize background translation worker
             const worker = new Worker(new URL('./ai-worker.ts', import.meta.url), { type: 'module' });
@@ -788,7 +809,7 @@ export default function App() {
             worker.postMessage({ type: 'init', model: savedWhisper });
           } else {
             // New device! Prompt sync request popup
-            await syncDeviceKeys(currentUser.id);
+            await syncDeviceKeys(activeUser.id);
           }
         } else {
           setLoadingText('Вам необходимо запустить приложение из Telegram или получить токен авторизации.');
@@ -810,7 +831,7 @@ export default function App() {
         workerRef.current.terminate();
       }
     };
-  }, [currentUser?.id]);
+  }, []);
 
   if (isPinLocked) {
     return (
