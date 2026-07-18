@@ -44,6 +44,18 @@ export default function App() {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
   
   // Local PIN lock
   const [isPinLocked, setIsPinLocked] = useState(false);
@@ -1036,12 +1048,11 @@ export default function App() {
                       } else {
                         tgWebApp.openLink(window.location.href);
                       }
-                    } else if ((window as any).deferredPrompt) {
-                        const deferredPrompt = (window as any).deferredPrompt;
+                    } else if (deferredPrompt) {
                       deferredPrompt.prompt();
                       const { outcome } = await deferredPrompt.userChoice;
                       if (outcome === 'accepted') {
-                        (window as any).deferredPrompt = null;
+                        setDeferredPrompt(null);
                       }
                     } else {
                       setShowInstallPrompt(true);
