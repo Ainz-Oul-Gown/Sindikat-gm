@@ -1062,7 +1062,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
     const friendId = chat.friendId || 0;
 
     try {
-      const { data } = await supabaseClient.from('currencies').select('*').eq('owner_id', friendId);
+      const { data } = await supabaseClient.from('currencies').select('*').in('owner_id', [friendId, currentUser.id]);
       setCurrencies(data || []);
       if (data && data.length > 0) {
         setSelectedCurrency(data[0]);

@@ -333,17 +333,24 @@ export default function App() {
       )
       .subscribe();
 
-    // Check for pending requests on load
-    supabaseClient
-      .from('device_requests')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('status', 'pending')
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          setPendingSyncRequest(data[0]);
-        }
-      });
+    // Check for pending requests on load and via polling
+    const fetchPending = () => {
+      supabaseClient
+        .from('device_requests')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'pending')
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            setPendingSyncRequest(data[0]);
+          } else {
+            setPendingSyncRequest(null);
+          }
+        });
+    };
+
+    fetchPending();
+    setInterval(fetchPending, 3000);
   };
 
   const handleDeviceDecision = async (requestId: string, safePubKey: string, status: 'approved' | 'rejected') => {
