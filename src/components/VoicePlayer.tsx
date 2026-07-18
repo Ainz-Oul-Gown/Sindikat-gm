@@ -1,0 +1,331 @@
+import { useState, useEffect, useRef, PointerEvent } from 'react';
+import { Play, Pause, Loader2, Wand2, ChevronDown, ChevronUp } from 'lucide-react';
+import { supabaseClient } from '../lib/supabase';
+import { base64ToArrayBuffer } from '../lib/crypto';
+
+interface VoicePlayerProps {
+  fileName: string;
+  waveformString?: string;
+  aesKey: CryptoKey | null;
+  transcription?: string;
+  isProcessing?: boolean;
+  isError?: boolean;
+  hasTranscript?: boolean;
+  msgId: string;
+  onTranscribe?: (fileName: string, msgId: string) => Promise<void>;
+}
+
+// Global cache to share audio and avoid multiple voice notes playing at once
+let globalCurrentAudio: HTMLAudioElement | null = null;
+let globalCurrentSetPlaying: ((playing: boolean) => void) | null = null;
+
+export default function VoicePlayer({
+  fileName,
+  waveformString = '',
+  aesKey,
+  transcription = '',
+  isProcessing = false,
+  isError = false,
+  hasTranscript = false,
+  msgId,
+  onTranscribe,
+}: VoicePlayerProps) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0); // 0 to 1
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
+  const [transcribeLoading, setTranscribeLoading] = useState(false);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const waveformRef = useRef<HTMLDivElement | null>(null);
+
+  // Parse waveform data
+  const bars = useRef<number[]>([]);
+  if (bars.current.length === 0) {
+    if (waveformString) {
+      bars.current = waveformString.split(',').map(Number);
+    } else {
+      // Dummy waveform if not present
+      bars.current = Array.from({ length: 30 }, () => Math.floor(10 + Math.random() * 90));
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      // Clean up audio on unmount if this player owns the global instance
+      if (audioRef.current) {
+        if (globalCurrentAudio === audioRef.current) {
+          globalCurrentAudio.pause();
+          globalCurrentAudio = null;
+          globalCurrentSetPlaying = null;
+        }
+        audioRef.current.pause();
+      }
+    };
+  }, []);
+
+  const handlePlayPause = async () => {
+    if (isLoading) return;
+
+    if (audioRef.current) {
+      const audio = audioRef.current;
+      if (isPlaying) {
+        audio.pause();
+        setIsPlaying(false);
+        if (globalCurrentAudio === audio) {
+          globalCurrentAudio = null;
+          globalCurrentSetPlaying = null;
+        }
+      } else {
+        // Pause any currently playing E2EE voice note
+        if (globalCurrentAudio) {
+          globalCurrentAudio.pause();
+          if (globalCurrentSetPlaying) globalCurrentSetPlaying(false);
+        }
+
+        audio.play();
+        setIsPlaying(true);
+        globalCurrentAudio = audio;
+        globalCurrentSetPlaying = setIsPlaying;
+      }
+      return;
+    }
+
+    // Load and decrypt file
+    setIsLoading(true);
+    try {
+      let arrayBuffer: ArrayBuffer;
+
+      // Try reading from cache API first
+      const cache = await caches.open('syndicate-media-cache');
+      const cacheReq = new Request(`/voice/${fileName}`);
+      const cachedRes = await cache.match(cacheReq);
+
+      if (cachedRes) {
+        arrayBuffer = await cachedRes.arrayBuffer();
+      } else {
+        const { data, error } = await supabaseClient.storage.from('voice_messages').download(fileName);
+        if (error) throw error;
+        arrayBuffer = await data.arrayBuffer();
+
+        // Save to cache (encrypted)
+        await cache.put(cacheReq, new Response(arrayBuffer));
+      }
+
+      if (!aesKey) throw new Error('No AES Key for decryption');
+
+      // Decrypt arrayBuffer
+      const bytes = new Uint8Array(arrayBuffer);
+      const iv = bytes.slice(0, 12);
+      const encryptedData = bytes.slice(12);
+
+      const decryptedBuffer = await window.crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: iv },
+        aesKey,
+        encryptedData
+      );
+
+      const audioBlob = new Blob([decryptedBuffer], { type: 'audio/ogg; codecs=opus' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.addEventListener('timeupdate', () => {
+        if (!audio.duration || isScrubbing) return;
+        setProgress(audio.currentTime / audio.duration);
+      });
+
+      audio.addEventListener('ended', () => {
+        setIsPlaying(false);
+        setProgress(0);
+        if (globalCurrentAudio === audio) {
+          globalCurrentAudio = null;
+          globalCurrentSetPlaying = null;
+        }
+      });
+
+      // Pause any playing audio before starting
+      if (globalCurrentAudio) {
+        globalCurrentAudio.pause();
+        if (globalCurrentSetPlaying) globalCurrentSetPlaying(false);
+      }
+
+      await audio.play();
+      setIsPlaying(true);
+      globalCurrentAudio = audio;
+      globalCurrentSetPlaying = setIsPlaying;
+    } catch (e) {
+      console.error('Failed to load/play E2EE voice message', e);
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateScrubProgress = (clientX: number) => {
+    if (!waveformRef.current) return 0;
+    const rect = waveformRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const pct = Math.max(0, Math.min(x, rect.width)) / rect.width;
+    setProgress(pct);
+    return pct;
+  };
+
+  const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (!audioRef.current) {
+      // Load and play on tap if not loaded yet
+      handlePlayPause();
+      return;
+    }
+
+    try {
+      waveformRef.current?.setPointerCapture(e.pointerId);
+    } catch (err) {}
+
+    setIsScrubbing(true);
+    const pct = updateScrubProgress(e.clientX);
+
+    if (window.Telegram?.WebApp?.HapticFeedback) {
+      window.Telegram.WebApp.HapticFeedback.selectionChanged();
+    }
+
+    const handlePointerMove = (ev: globalThis.PointerEvent) => {
+      updateScrubProgress(ev.clientX);
+    };
+
+    const handlePointerUp = (ev: globalThis.PointerEvent) => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+
+      const finalPct = updateScrubProgress(ev.clientX);
+      if (audioRef.current && audioRef.current.duration) {
+        audioRef.current.currentTime = finalPct * audioRef.current.duration;
+      }
+      setIsScrubbing(false);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+  };
+
+  const handleManualTranscribe = async () => {
+    if (!onTranscribe) return;
+    setTranscribeLoading(true);
+    try {
+      await onTranscribe(fileName, msgId);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTranscribeLoading(false);
+    }
+  };
+
+  const activeCount = Math.floor(progress * bars.current.length);
+
+  return (
+    <div className="flex flex-col w-full text-slate-100 select-none">
+      <div className="flex items-center gap-3 w-full">
+        {/* Play/Pause Button */}
+        <button
+          onClick={handlePlayPause}
+          disabled={isLoading}
+          className="w-10 h-10 rounded-full bg-white text-blue-600 flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition flex-shrink-0 disabled:opacity-80"
+        >
+          {isLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : isPlaying ? (
+            <Pause className="w-4 h-4 fill-current" />
+          ) : (
+            <Play className="w-4 h-4 fill-current translate-x-0.5" />
+          )}
+        </button>
+
+        {/* Waveform wrapper */}
+        <div
+          ref={waveformRef}
+          onPointerDown={handlePointerDown}
+          className="flex items-center gap-[2.5px] flex-grow h-8 cursor-pointer touch-none"
+        >
+          {bars.current.map((val, idx) => {
+            const isActive = idx < activeCount;
+            return (
+              <div
+                key={idx}
+                className="flex-1 rounded-[2px] transition-all min-w-[2.5px]"
+                style={{
+                  height: `${Math.max(12, val)}%`,
+                  backgroundColor: isActive ? 'rgb(255, 255, 255)' : 'rgba(255, 255, 255, 0.4)',
+                  boxShadow: isActive ? '0 0 2px rgba(255,255,255,0.6)' : 'none',
+                }}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Transcription toggle */}
+      {hasTranscript ? (
+        <div className="mt-2.5 pt-2 border-t border-white/10 w-full">
+          <button
+            onClick={() => {
+              setShowTranscript(!showTranscript);
+              if (window.Telegram?.WebApp?.HapticFeedback) {
+                window.Telegram.WebApp.HapticFeedback.selectionChanged();
+              }
+            }}
+            className="text-xs text-white/80 hover:text-white flex items-center gap-1.5 focus:outline-none"
+          >
+            {showTranscript ? (
+              <>
+                <ChevronUp className="w-3.5 h-3.5" /> Скрыть перевод
+              </>
+            ) : (
+              <>
+                <ChevronDown className="w-3.5 h-3.5" /> Показать перевод
+              </>
+            )}
+          </button>
+          {showTranscript && (
+            <div className="mt-2 text-sm leading-relaxed text-white/90 bg-black/10 p-2.5 rounded-lg border border-white/5 whitespace-pre-wrap select-text">
+              {transcription}
+            </div>
+          )}
+        </div>
+      ) : isProcessing ? (
+        <div className="mt-2.5 pt-2 border-t border-white/10 text-xs text-white/70 flex items-center gap-1.5">
+          <Loader2 className="w-3 h-3 animate-spin" /> {transcription || 'ИИ анализирует...'}
+        </div>
+      ) : isError ? (
+        <div className="mt-2.5 pt-2 border-t border-white/10 text-xs text-rose-300 flex items-center gap-1.5">
+          {transcription || 'Ошибка перевода'}
+        </div>
+      ) : (
+        onTranscribe && (
+          <div className="mt-2.5 pt-2 border-t border-white/10 w-full">
+            <button
+              onClick={handleManualTranscribe}
+              disabled={transcribeLoading}
+              className="text-xs font-semibold text-white/90 hover:text-white flex items-center gap-1.5 focus:outline-none active:opacity-75 disabled:opacity-50"
+            >
+              {transcribeLoading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Слушаю...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="w-3.5 h-3.5" /> Расшифровать текст
+                </>
+              )}
+            </button>
+          </div>
+        )
+      )}
+    </div>
+  );
+}
