@@ -1,3 +1,4 @@
+import { hapticImpact } from "../lib/haptics";
 import { useState, useEffect } from 'react';
 import * as idbKeyval from 'idb-keyval';
 import { Lock, Unlock, UserCheck, Delete, ShieldAlert } from 'lucide-react';
@@ -43,9 +44,7 @@ export default function PinScreen({
 
   const handleKeyPress = async (val: string) => {
     // Vibrate briefly if TG API is available
-    if (window.Telegram?.WebApp?.HapticFeedback) {
-      window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
-    }
+hapticImpact("light");
 
     if (val === 'cancel') {
       if (onCancel) onCancel();
@@ -73,9 +72,7 @@ export default function PinScreen({
           // PANIC WIPE!
           triggerPanicWipe();
         } else if (enteredHash === savedHash) {
-          if (window.Telegram?.WebApp?.HapticFeedback) {
-            window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-          }
+hapticImpact("success");
           onSuccess();
         } else {
           triggerShake();
@@ -92,9 +89,7 @@ export default function PinScreen({
           } else if (type === 'panic') {
             localStorage.setItem('synd_panic_pin_hash', hash);
           }
-          if (window.Telegram?.WebApp?.HapticFeedback) {
-            window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-          }
+hapticImpact("success");
           onSuccess();
         } else {
           triggerShake();
@@ -106,9 +101,7 @@ export default function PinScreen({
         if (enteredHash === localStorage.getItem('synd_pin_hash')) {
           localStorage.removeItem('synd_pin_hash');
           localStorage.removeItem('synd_panic_pin_hash'); // Disable panic too
-          if (window.Telegram?.WebApp?.HapticFeedback) {
-            window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-          }
+hapticImpact("success");
           onSuccess();
         } else {
           triggerShake();
@@ -117,9 +110,7 @@ export default function PinScreen({
         const enteredHash = await hashPin(newPin);
         if (enteredHash === localStorage.getItem('synd_panic_pin_hash')) {
           localStorage.removeItem('synd_panic_pin_hash');
-          if (window.Telegram?.WebApp?.HapticFeedback) {
-            window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-          }
+hapticImpact("success");
           onSuccess();
         } else {
           triggerShake();
@@ -131,9 +122,7 @@ export default function PinScreen({
   const triggerShake = () => {
     setIsError(true);
     setIsShaking(true);
-    if (window.Telegram?.WebApp?.HapticFeedback) {
-      window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
-    }
+hapticImpact("error");
     setTimeout(() => {
       setIsShaking(false);
       setEnteredPin('');

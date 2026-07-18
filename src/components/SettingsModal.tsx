@@ -1,3 +1,4 @@
+import { hapticImpact } from "../lib/haptics";
 import { useState, useEffect } from 'react';
 import {
   X,
@@ -58,18 +59,14 @@ export default function SettingsModal({
     localStorage.setItem('synd_theme_color', color);
     applyTheme(color);
 
-    if (window.Telegram?.WebApp?.HapticFeedback) {
-      window.Telegram.WebApp.HapticFeedback.selectionChanged();
-    }
+hapticImpact("selection");
   };
 
   const handleHapticsToggle = (checked: boolean) => {
     setHaptics(checked);
     localStorage.setItem('synd_haptics', checked ? 'on' : 'off');
 
-    if (checked && window.Telegram?.WebApp?.HapticFeedback) {
-      window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
-    }
+    hapticImpact("medium");
   };
 
   const handlePanicWipeClick = () => {

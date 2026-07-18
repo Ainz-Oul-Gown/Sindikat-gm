@@ -1,3 +1,5 @@
+import React from 'react';
+import { hapticImpact } from "../lib/haptics";
 import { useState, useEffect, useRef, FormEvent, UIEvent } from 'react';
 import {
   ChevronLeft,
@@ -437,9 +439,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
         encrypted_vector: encryptedVector,
       });
 
-      if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
-      }
+hapticImpact("light");
     } catch (err) {
       console.error(err);
     }
@@ -544,7 +544,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
         analyser.fftSize = 256;
         analyserRef.current = analyser;
 
-        const source = audioCtx.createMediaStreamSource(stream);
+        const source = audioCtx.createMediaStreamSource(globalAudioStream);
         sourceRef.current = source;
         source.connect(analyser);
 
@@ -570,9 +570,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
         console.warn('Analyser node failed', analyserErr);
       }
 
-      if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
-      }
+hapticImpact("medium");
     } catch (err) {
       alert('Ошибка доступа к микрофону!');
     }
@@ -806,9 +804,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
             text: cleanText,
           });
 
-          if (window.Telegram?.WebApp?.HapticFeedback) {
-            window.Telegram.WebApp.HapticFeedback.selectionChanged();
-          }
+hapticImpact("selection");
 
           swipingMsgId.current = null;
           setSwipeOffset(0);
@@ -828,9 +824,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
       cancelRecording();
     } else if (deltaY < -100) {
       setIsRecordingLocked(true);
-      if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.selectionChanged();
-      }
+hapticImpact("selection");
     }
   };
 
@@ -1516,7 +1510,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
 
       {/* Info details screen */}
       {activeModal === 'info' && (
-        <div className="fixed inset-0 z-[1000] bg-slate-950 p-6 overflow-y-auto animate-fade-in flex flex-col">
+        <div className="fixed inset-0 z-[1000] bg-slate-950 p-6 overflow-y-auto flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <button onClick={() => setActiveModal('none')} className="text-primary font-medium">
               Закрыть
@@ -1597,7 +1591,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
 
       {/* Deep Search screen */}
       {activeModal === 'search' && (
-        <div className="fixed inset-0 z-[1000] bg-slate-950 p-5 overflow-y-auto animate-fade-in flex flex-col">
+        <div className="fixed inset-0 z-[1000] bg-slate-950 p-5 overflow-y-auto flex flex-col">
           <div className="flex justify-between items-center mb-6 flex-shrink-0">
             <button onClick={() => setActiveModal('none')} className="text-primary font-medium">
               Закрыть
@@ -1613,7 +1607,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
 
       {/* Debt summary list screen */}
       {activeModal === 'debts' && (
-        <div className="fixed inset-0 z-[1000] bg-slate-950 p-6 overflow-y-auto animate-fade-in flex flex-col">
+        <div className="fixed inset-0 z-[1000] bg-slate-950 p-6 overflow-y-auto flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <button onClick={() => setActiveModal('none')} className="text-primary font-medium">
               Закрыть
@@ -1675,7 +1669,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
 
       {/* Add Debt view screen */}
       {activeModal === 'add-debt' && (
-        <div className="fixed inset-0 z-[1000] bg-slate-950 p-6 overflow-y-auto animate-fade-in flex flex-col">
+        <div className="fixed inset-0 z-[1000] bg-slate-950 p-6 overflow-y-auto flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <button onClick={() => setActiveModal('debts')} className="text-primary font-medium">
               Назад
@@ -1747,7 +1741,7 @@ export default function ChatView({ chat, currentUser, onBack, worker }: ChatView
 
       {/* Invite friends list selection screen */}
       {activeModal === 'invite-friend' && (
-        <div className="fixed inset-0 z-[1000] bg-slate-950 p-6 overflow-y-auto animate-fade-in flex flex-col">
+        <div className="fixed inset-0 z-[1000] bg-slate-950 p-6 overflow-y-auto flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <button onClick={() => setActiveModal('info')} className="text-primary font-medium">
               Назад

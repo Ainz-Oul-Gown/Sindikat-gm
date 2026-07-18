@@ -1,3 +1,4 @@
+import { hapticImpact } from "../lib/haptics";
 import { useState, useEffect } from 'react';
 import * as idbKeyval from 'idb-keyval';
 import { ChevronLeft, Database, Trash, HardDrive, RefreshCw, AlertCircle } from 'lucide-react';
@@ -106,9 +107,7 @@ export default function StorageScreen({ onBack }: StorageScreenProps) {
     await enforceCacheLimit(val);
     calculateStorage();
 
-    if (window.Telegram?.WebApp?.HapticFeedback) {
-      window.Telegram.WebApp.HapticFeedback.selectionChanged();
-    }
+hapticImpact("selection");
   };
 
   const handleClearChats = async () => {
@@ -125,9 +124,7 @@ export default function StorageScreen({ onBack }: StorageScreenProps) {
       await idbKeyval.del(k);
     }
 
-    if (window.Telegram?.WebApp?.HapticFeedback) {
-      window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-    }
+hapticImpact("success");
     calculateStorage();
   };
 
@@ -140,9 +137,7 @@ export default function StorageScreen({ onBack }: StorageScreenProps) {
       console.error(e);
     }
 
-    if (window.Telegram?.WebApp?.HapticFeedback) {
-      window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-    }
+hapticImpact("success");
     calculateStorage();
   };
 

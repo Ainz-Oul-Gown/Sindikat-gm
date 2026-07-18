@@ -1,3 +1,4 @@
+import { hapticImpact } from "../lib/haptics";
 import { useState, useEffect, useRef, PointerEvent } from 'react';
 import { Play, Pause, Loader2, Wand2, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabaseClient } from '../lib/supabase';
@@ -158,9 +159,7 @@ export default function VoicePlayer({
       globalCurrentSetPlaying = setIsPlaying;
     } catch (e) {
       console.error('Failed to load/play E2EE voice message', e);
-      if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
-      }
+hapticImpact("error");
     } finally {
       setIsLoading(false);
     }
@@ -189,9 +188,7 @@ export default function VoicePlayer({
     setIsScrubbing(true);
     const pct = updateScrubProgress(e.clientX);
 
-    if (window.Telegram?.WebApp?.HapticFeedback) {
-      window.Telegram.WebApp.HapticFeedback.selectionChanged();
-    }
+hapticImpact("selection");
 
     const handlePointerMove = (ev: globalThis.PointerEvent) => {
       updateScrubProgress(ev.clientX);
@@ -275,9 +272,7 @@ export default function VoicePlayer({
           <button
             onClick={() => {
               setShowTranscript(!showTranscript);
-              if (window.Telegram?.WebApp?.HapticFeedback) {
-                window.Telegram.WebApp.HapticFeedback.selectionChanged();
-              }
+hapticImpact("selection");
             }}
             className="text-xs text-white/80 hover:text-white flex items-center gap-1.5 focus:outline-none"
           >

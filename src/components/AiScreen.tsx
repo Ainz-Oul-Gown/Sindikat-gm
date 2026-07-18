@@ -1,3 +1,4 @@
+import { hapticImpact } from "../lib/haptics";
 import { useState, useEffect } from 'react';
 import { ChevronLeft, Brain, Cpu, ShieldAlert, Sparkles, Download, Trash, RefreshCw } from 'lucide-react';
 
@@ -83,9 +84,7 @@ export default function AiScreen({ onBack, worker }: AiScreenProps) {
         setWhisperLoading(false);
         setWhisperProgress(null);
         calculateSizes();
-        if (window.Telegram?.WebApp?.HapticFeedback) {
-          window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-        }
+hapticImpact("success");
       } else if (msg.type === 'error') {
         setWhisperLoading(false);
         setWhisperProgress(null);
@@ -102,9 +101,7 @@ export default function AiScreen({ onBack, worker }: AiScreenProps) {
   const handleAutoWhisperToggle = (checked: boolean) => {
     setAutoWhisper(checked);
     localStorage.setItem('synd_auto_whisper', checked ? 'on' : 'off');
-    if (window.Telegram?.WebApp?.HapticFeedback) {
-      window.Telegram.WebApp.HapticFeedback.selectionChanged();
-    }
+hapticImpact("selection");
   };
 
   const handleWhisperModelChange = (val: string) => {
@@ -115,9 +112,7 @@ export default function AiScreen({ onBack, worker }: AiScreenProps) {
       worker.postMessage({ type: 'change_model', model: val });
     }
 
-    if (window.Telegram?.WebApp?.HapticFeedback) {
-      window.Telegram.WebApp.HapticFeedback.selectionChanged();
-    }
+hapticImpact("selection");
   };
 
   const handleDownloadSearch = async () => {
@@ -138,9 +133,7 @@ export default function AiScreen({ onBack, worker }: AiScreenProps) {
 
       setSearchProgress(null);
       calculateSizes();
-      if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-      }
+hapticImpact("success");
     } catch (err: any) {
       alert('Ошибка загрузки: ' + err.message);
     } finally {
@@ -152,9 +145,7 @@ export default function AiScreen({ onBack, worker }: AiScreenProps) {
     if (!confirm('Удалить модель поиска?')) return;
     await deleteModel('Xenova/paraphrase-multilingual-MiniLM-L12-v2');
     calculateSizes();
-    if (window.Telegram?.WebApp?.HapticFeedback) {
-      window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-    }
+hapticImpact("success");
   };
 
   const handleDownloadWhisper = () => {
@@ -168,9 +159,7 @@ export default function AiScreen({ onBack, worker }: AiScreenProps) {
     if (!confirm('Удалить модель Whisper?')) return;
     await deleteModel(whisperModel);
     calculateSizes();
-    if (window.Telegram?.WebApp?.HapticFeedback) {
-      window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-    }
+hapticImpact("success");
   };
 
   const isSearchDownloaded = parseFloat(searchSize) > 0;

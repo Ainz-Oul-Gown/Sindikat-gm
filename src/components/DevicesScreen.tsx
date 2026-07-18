@@ -1,3 +1,4 @@
+import { hapticImpact } from "../lib/haptics";
 import { useState, useEffect } from 'react';
 import { supabaseClient } from '../lib/supabase';
 import { UserDevice } from '../types';
@@ -56,9 +57,7 @@ export default function DevicesScreen({ userId, onBack }: DevicesScreenProps) {
 
       setDevices((prev) => prev.filter((d) => d.device_id !== deviceId));
 
-      if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-      }
+hapticImpact("success");
     } catch (err: any) {
       alert('Ошибка удаления устройства: ' + err.message);
     }

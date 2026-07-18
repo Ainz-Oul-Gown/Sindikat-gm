@@ -1,3 +1,4 @@
+import { hapticImpact } from "../lib/haptics";
 import { useState, useEffect } from 'react';
 import { Search, Loader2, Sliders, Shield, Brain, Check, Calendar, HelpCircle } from 'lucide-react';
 import { supabaseClient } from '../lib/supabase';
@@ -187,9 +188,7 @@ export default function DeepSearch({ chatId, aesKey, userId }: DeepSearchProps) 
               checked={isSemantic}
               onChange={(e) => {
                 setIsSemantic(e.target.checked);
-                if (window.Telegram?.WebApp?.HapticFeedback) {
-                  window.Telegram.WebApp.HapticFeedback.selectionChanged();
-                }
+hapticImpact("selection");
               }}
               className="w-4.5 h-4.5 rounded text-primary bg-slate-950 border-slate-800 focus:ring-primary focus:ring-offset-0"
             />
@@ -210,9 +209,7 @@ export default function DeepSearch({ chatId, aesKey, userId }: DeepSearchProps) 
                 value={threshold}
                 onChange={(e) => {
                   setThreshold(parseFloat(e.target.value));
-                  if (window.Telegram?.WebApp?.HapticFeedback) {
-                    window.Telegram.WebApp.HapticFeedback.selectionChanged();
-                  }
+hapticImpact("selection");
                 }}
                 className="w-16 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary"
               />

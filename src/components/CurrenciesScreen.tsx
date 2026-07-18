@@ -1,3 +1,4 @@
+import { hapticImpact } from "../lib/haptics";
 import React, { useState, useEffect, FormEvent } from 'react';
 import { supabaseClient } from '../lib/supabase';
 import { Currency } from '../types';
@@ -57,9 +58,7 @@ export default function CurrenciesScreen({ userId, onBack }: CurrenciesScreenPro
       setPrice('');
       fetchCurrencies();
 
-      if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-      }
+hapticImpact("success");
     } catch (err: any) {
       alert('Ошибка добавления: ' + err.message);
     } finally {
@@ -80,9 +79,7 @@ export default function CurrenciesScreen({ userId, onBack }: CurrenciesScreenPro
 
       setCurrencies((prev) => prev.filter((c) => c.id !== id));
 
-      if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-      }
+hapticImpact("success");
     } catch (err: any) {
       alert('Ошибка удаления: ' + err.message);
     }

@@ -29,6 +29,7 @@ import { applyTheme } from './lib/theme';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<{ id: number; first_name: string } | null>(null);
+  const [myFingerprint, setMyFingerprint] = useState<string | null>(null);
   const [isAuth, setIsAuth] = useState(false);
   const [loadingText, setLoadingText] = useState('Загрузка Синдиката...');
 
@@ -40,6 +41,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   // Local PIN lock
@@ -428,7 +430,7 @@ export default function App() {
   const loadChatsAndFriends = async (userId: number) => {
     try {
       // Parallelize base queries
-      const [relsRes, myKeysRes] = await Promise.all([
+      const [relsRes, myKeysRes, myDataRes] = await Promise.all([
         supabaseClient
           .from('friendships')
           .select('*')
@@ -436,14 +438,23 @@ export default function App() {
         supabaseClient
           .from('chat_keys')
           .select('chat_id')
-          .eq('user_id', userId)
+          .eq('user_id', userId),
+        supabaseClient
+          .from('users')
+          .select('public_key')
+          .eq('tg_id', userId)
+          .maybeSingle()
       ]);
 
       const relsArray = relsRes.data || [];
       const myKeys = myKeysRes.data;
+      
+      if (myDataRes.data && myDataRes.data.public_key) {
+        getFingerprint(myDataRes.data.public_key).then(fp => setMyFingerprint(fp));
+      }
 
       // Prepare secondary parallel queries
-      const promises: Promise<void>[] = [];
+      const promises: Promise<any>[] = [];
 
       // 1. Friends
       const friendIds = relsArray
@@ -986,7 +997,7 @@ export default function App() {
           worker={workerRef.current}
         />
       ) : (
-        <div className="flex flex-col h-full overflow-y-auto p-4 flex-grow pb-24">
+        <div className="flex flex-col h-full overflow-y-auto p-4 flex-grow pb-32">
           {/* Header */}
           <div className="flex items-center justify-between py-3 mb-5 border-b border-slate-900 flex-shrink-0">
             <h2 className="text-xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-400">
@@ -995,7 +1006,7 @@ export default function App() {
             <div className="flex items-center gap-1">
               <button
                 onClick={async () => {
-                  const tgWebApp = window.Telegram?.WebApp;
+                  const tgWebApp = window.Telegram?.WebApp as any;
                   if (tgWebApp && tgWebApp.platform && tgWebApp.platform !== 'unknown') {
                     // We are in Telegram WebApp, open link in external browser with token
                     const token = localStorage.getItem('synd_token');
@@ -1013,7 +1024,7 @@ export default function App() {
                       setDeferredPrompt(null);
                     }
                   } else {
-                    alert('Для установки приложения:\n\n📱 На iOS: Нажмите кнопку "Поделиться" и выберите "На экран домой"\n\n🤖 На Android/ПК: Выберите "Установить приложение" или "На экран домой" в меню браузера (обычно 3 точки в правом верхнем углу).');
+                    setShowInstallPrompt(true);
                   }
                 }}
                 className="p-2 text-slate-400 hover:text-slate-200 active:scale-95 transition focus:outline-none"
@@ -1041,6 +1052,11 @@ export default function App() {
                 <span className="text-[11px] text-slate-500 font-semibold tracking-wide uppercase mt-0.5">
                   Мой ID: {currentUser?.id}
                 </span>
+                {myFingerprint && (
+                  <span className="text-[11px] text-slate-500/80 font-mono tracking-wider mt-0.5">
+                    ШИФР: {myFingerprint}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -1166,6 +1182,50 @@ export default function App() {
           >
             <Plus className="w-6.5 h-6.5" />
           </button>
+        </div>
+      )}
+
+      {/* Install Prompt Modal */}
+      {showInstallPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-5 shadow-2xl flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                <Download className="w-5 h-5 text-primary" />
+                Установка Синдиката
+              </h3>
+              <button
+                onClick={() => setShowInstallPrompt(false)}
+                className="p-2 text-slate-400 hover:text-white rounded-full bg-slate-800/50 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="text-sm text-slate-300 leading-relaxed bg-slate-800/50 p-4 rounded-xl">
+              <p className="mb-3">Для установки приложения на ваш телефон:</p>
+              <ul className="list-disc list-inside space-y-2 text-slate-400 marker:text-primary">
+                <li><strong className="text-slate-200">iOS (Safari):</strong> Нажмите "Поделиться" и выберите "На экран домой".</li>
+                <li><strong className="text-slate-200">Android/ПК:</strong> Выберите "Установить приложение" или "Добавить на экран" в меню браузера (обычно 3 точки).</li>
+              </ul>
+            </div>
+            
+            <div className="mt-2 text-center">
+              <p className="text-xs text-slate-500 mb-2">Открыли из Telegram? Скопируйте ссылку и откройте в Safari/Chrome:</p>
+              <button
+                onClick={() => {
+                  const token = localStorage.getItem('synd_token');
+                  const url = new URL(window.location.href);
+                  if (token) url.hash = `token=${token}`;
+                  navigator.clipboard.writeText(url.toString());
+                  alert('Ссылка с токеном входа скопирована!');
+                }}
+                className="w-full py-2.5 bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition rounded-xl font-medium"
+              >
+                Скопировать ссылку для входа
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
