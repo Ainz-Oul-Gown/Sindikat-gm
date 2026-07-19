@@ -15,6 +15,11 @@ import {
   Check,
   Fingerprint,
   Lock,
+  Edit2,
+  Info,
+  History,
+  Calendar,
+  AlertTriangle,
 } from 'lucide-react';
 import CurrenciesScreen from './CurrenciesScreen';
 import DevicesScreen from './DevicesScreen';
@@ -22,6 +27,7 @@ import StorageScreen from './StorageScreen';
 import AiScreen from './AiScreen';
 import { applyTheme } from '../lib/theme';
 import { supabaseClient } from '../lib/supabase';
+import * as idbKeyval from 'idb-keyval';
 
 interface SettingsModalProps {
   userId: number;
@@ -31,6 +37,7 @@ interface SettingsModalProps {
   worker: Worker | null;
   onPanicWipe: () => void;
   onPinSetup: (type: 'normal' | 'panic') => void;
+  onUpdateName?: (newName: string) => void;
 }
 
 const THEME_COLORS = ['#0A84FF', '#FF2D55', '#32D74B', '#BF5AF2'];
@@ -43,6 +50,7 @@ export default function SettingsModal({
   worker,
   onPanicWipe,
   onPinSetup,
+  onUpdateName,
 }: SettingsModalProps) {
   const [activeScreen, setActiveScreen] = useState<'main' | 'currencies' | 'devices' | 'storage' | 'ai'>('main');
   const [accentColor, setAccentColor] = useState('#0A84FF');
@@ -51,6 +59,17 @@ export default function SettingsModal({
   const [hasPanicPin, setHasPanicPin] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
   const [myInvites, setMyInvites] = useState<string[]>([]);
+  
+  // Name edit and Biometrics states
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [newName, setNewName] = useState(userName);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [hasPasskey, setHasPasskey] = useState(false);
+  const [showBiometricInfo, setShowBiometricInfo] = useState(false);
+
+  useEffect(() => {
+    setNewName(userName);
+  }, [userName]);
 
   useEffect(() => {
     // Read theme color
@@ -63,6 +82,17 @@ export default function SettingsModal({
     // Read PIN status
     setHasPin(!!localStorage.getItem('synd_pin_hash'));
     setHasPanicPin(!!localStorage.getItem('synd_panic_pin_hash'));
+
+    // Check passkey registration status
+    const checkPasskey = async () => {
+      try {
+        const cred = await idbKeyval.get('syndicate_passkey_credential');
+        setHasPasskey(!!cred);
+      } catch (e) {
+        console.error('Failed to check passkeys', e);
+      }
+    };
+    checkPasskey();
 
     // Fetch invites
     const fetchStatus = async () => {
@@ -143,6 +173,110 @@ export default function SettingsModal({
     }
   };
 
+  const handleStartEditName = () => {
+    hapticImpact("selection");
+    const lastChange = localStorage.getItem('synd_last_name_change');
+    if (lastChange) {
+      const msPassed = Date.now() - parseInt(lastChange);
+      const oneWeek = 7 * 24 * 60 * 60 * 1000;
+      if (msPassed < oneWeek) {
+        const msLeft = oneWeek - msPassed;
+        const daysLeft = Math.floor(msLeft / (24 * 60 * 60 * 1000));
+        const hoursLeft = Math.floor((msLeft % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+        const minLeft = Math.ceil((msLeft % (60 * 60 * 1000)) / (60 * 1000));
+        
+        let timeLeftStr = '';
+        if (daysLeft > 0) timeLeftStr = `${daysLeft} дн.`;
+        else if (hoursLeft > 0) timeLeftStr = `${hoursLeft} ч.`;
+        else timeLeftStr = `${minLeft} мин.`;
+        
+        hapticImpact("error");
+        alert(`Изменение имени заблокировано. Имя можно редактировать не чаще 1 раза в неделю.\nОсталось ждать: ${timeLeftStr}`);
+        return;
+      }
+    }
+    setIsEditingName(true);
+  };
+
+  const handleSaveName = async () => {
+    const trimmed = newName.trim();
+    if (!trimmed) {
+      setNameError('Имя не может быть пустым');
+      hapticImpact("error");
+      return;
+    }
+    if (trimmed.length < 2) {
+      setNameError('Имя слишком короткое');
+      hapticImpact("error");
+      return;
+    }
+
+    try {
+      hapticImpact("medium");
+
+      // Fetch the current status first
+      const { data: userData } = await supabaseClient
+        .from('users')
+        .select('first_name, status')
+        .eq('tg_id', userId)
+        .maybeSingle();
+
+      const oldName = userData?.first_name || userName;
+      let parsedStatus: any = {};
+      try {
+        if (userData && userData.status) {
+          parsedStatus = JSON.parse(userData.status);
+        }
+      } catch (e) {}
+
+      // Add to names_history with timestamp
+      const namesHistory = parsedStatus.names_history || [];
+      if (oldName && oldName !== trimmed && (!namesHistory.length || namesHistory[namesHistory.length - 1].name !== oldName)) {
+        namesHistory.push({
+          name: oldName,
+          changed_at: Date.now()
+        });
+      }
+      parsedStatus.names_history = namesHistory;
+
+      // Update first_name and status in supabase for current user
+      const { error } = await supabaseClient
+        .from('users')
+        .update({ 
+          first_name: trimmed,
+          status: JSON.stringify(parsedStatus)
+        })
+        .eq('tg_id', userId);
+
+      if (error) throw error;
+
+      // Update local storage alternate name if any
+      const altUser = localStorage.getItem('synd_alt_user');
+      if (altUser) {
+        try {
+          const parsed = JSON.parse(altUser);
+          parsed.first_name = trimmed;
+          localStorage.setItem('synd_alt_user', JSON.stringify(parsed));
+        } catch (e) {}
+      }
+
+      // Record update timestamp
+      localStorage.setItem('synd_last_name_change', Date.now().toString());
+      
+      // Trigger callback
+      if (onUpdateName) {
+        onUpdateName(trimmed);
+      }
+
+      setIsEditingName(false);
+      hapticImpact("success");
+    } catch (err: any) {
+      console.error(err);
+      setNameError(`Ошибка: ${err.message}`);
+      hapticImpact("error");
+    }
+  };
+
   const handleColorSelect = (color: string) => {
     setAccentColor(color);
     localStorage.setItem('synd_theme_color', color);
@@ -219,20 +353,62 @@ hapticImpact("selection");
         <div className="bg-gradient-to-br from-slate-900/80 to-slate-950/80 border border-slate-900 rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-xl flex flex-col gap-4">
           <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
           
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-primary to-emerald-500 text-white font-bold text-lg flex items-center justify-center uppercase shadow-md shadow-primary/10 select-none">
-              {userName ? userName.charAt(0) : '?'}
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="font-bold text-slate-100 text-base truncate">{userName}</span>
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
-                <span className="text-[10px] text-primary font-mono tracking-wider font-semibold uppercase">
-                  Канал защищен
+          {isEditingName ? (
+            <div className="flex flex-col gap-2 w-full animate-fade-in z-10">
+              <span className="text-[10px] text-slate-500 font-bold font-mono tracking-wider uppercase pl-1">Редактирование имени</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => { setNameError(null); setNewName(e.target.value); }}
+                  placeholder="Новое имя..."
+                  className="flex-grow bg-slate-950 border border-slate-800 text-slate-100 rounded-xl px-3 py-2 text-sm outline-none focus:border-primary/60"
+                  maxLength={25}
+                />
+                <button
+                  onClick={handleSaveName}
+                  className="bg-primary hover:bg-primary-hover text-white font-bold text-xs px-3.5 py-2 rounded-xl transition active:scale-95 cursor-pointer"
+                >
+                  ОК
+                </button>
+                <button
+                  onClick={() => setIsEditingName(false)}
+                  className="bg-slate-900 border border-slate-800 hover:text-slate-300 text-slate-400 text-xs px-3 py-2 rounded-xl transition active:scale-95 cursor-pointer"
+                >
+                  Отмена
+                </button>
+              </div>
+              {nameError && (
+                <span className="text-[10px] text-rose-400 font-semibold pl-1 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" /> {nameError}
                 </span>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-4 z-10">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-primary to-emerald-500 text-white font-bold text-lg flex items-center justify-center uppercase shadow-md shadow-primary/10 select-none">
+                {userName ? userName.charAt(0) : '?'}
+              </div>
+              <div className="flex flex-col min-w-0 flex-grow">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-100 text-base truncate">{userName}</span>
+                  <button
+                    onClick={handleStartEditName}
+                    className="text-slate-500 hover:text-slate-300 transition p-1 cursor-pointer"
+                    title="Изменить имя"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
+                  <span className="text-[10px] text-primary font-mono tracking-wider font-semibold uppercase">
+                    Канал защищен
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="border-t border-slate-900/80 pt-3.5 space-y-2.5">
             <div className="flex flex-col gap-1">
@@ -494,6 +670,28 @@ hapticImpact("selection");
               </button>
             )}
 
+            {/* Passkeys / Biometrics */}
+            <div className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-900/35 transition duration-150">
+              <div className="flex items-center gap-3 text-slate-300">
+                <Fingerprint className="w-4.5 h-4.5 text-primary" />
+                <span className="text-sm font-medium">Вход по Passkey (Биометрия)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { hapticImpact("selection"); setShowBiometricInfo(true); }}
+                  className="p-1.5 hover:bg-slate-900 rounded-lg text-slate-500 hover:text-slate-300 transition"
+                  title="Анализ безопасности биометрии"
+                >
+                  <Info className="w-4 h-4" />
+                </button>
+                <span className={`text-[10px] font-mono font-bold border rounded-md px-2.5 py-0.5 tracking-wide uppercase ${
+                  hasPasskey ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-slate-900 border-slate-800 text-slate-500'
+                }`}>
+                  {hasPasskey ? 'ACTIVE' : 'OFF'}
+                </span>
+              </div>
+            </div>
+
             {/* Panic Button */}
             <button
               onClick={() => { hapticImpact("warning"); handlePanicWipeClick(); }}
@@ -505,6 +703,44 @@ hapticImpact("selection");
           </div>
         </div>
       </div>
+
+      {/* Biometric Security Info Modal Overlay */}
+      {showBiometricInfo && (
+        <div className="fixed inset-0 z-[1100] bg-slate-950/90 backdrop-blur-md flex flex-col justify-center p-4 animate-fade-in font-sans">
+          <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800/90 p-5 rounded-3xl flex flex-col gap-4 max-w-sm w-full mx-auto relative shadow-2xl overflow-y-auto max-h-[85vh] scrollbar-thin">
+            <h3 className="font-extrabold font-mono tracking-tight text-slate-100 text-base uppercase flex items-center gap-2">
+              <Fingerprint className="w-5 h-5 text-primary" /> Анализ ИБ: Биометрия
+            </h3>
+            
+            <div className="space-y-3.5 text-xs text-slate-300 leading-relaxed">
+              <p>
+                <strong className="text-primary">1. Насколько это безопасно?</strong>
+                <br />
+                Вход по Passkeys (WebAuthn) невероятно надежен. Ключи генерируются аппаратно в защищенном чипе Secure Enclave вашего устройства. Ни сервер, ни провайдер не видят ваши биометрические данные. Устройство передает лишь криптографическую подпись, защищая вас от фишинга и перехвата паролей.
+              </p>
+              
+              <p>
+                <strong className="text-rose-400">2. Почему невозможен "Отпечаток паники" (Panic Fingerprint) в Web?</strong>
+                <br />
+                В браузере (и PWA) стандарт WebAuthn **строго изолирует** биометрический датчик от JS-кода с целью защиты вашей приватности. Сайты не имеют технической возможности узнать, *какой именно палец* был приложен. Браузер возвращает только двоичный ответ: <span className="text-emerald-400 font-semibold">"Пользователь успешно верифицирован"</span>.
+              </p>
+              
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-xl text-[11px] leading-relaxed">
+                <strong>Решение Syndicate:</strong>
+                <br />
+                Поскольку отпечаток паники аппаратно недоступен в вебе, используйте наш <strong>Тревожный PIN (Panic PIN)</strong> на экране блокировки. Ввод альтернативного PIN-кода мгновенно удаляет все ключи и переписки на устройстве.
+              </div>
+            </div>
+
+            <button
+              onClick={() => { hapticImpact("selection"); setShowBiometricInfo(false); }}
+              className="w-full bg-primary hover:bg-primary-hover text-white font-bold font-mono py-3 rounded-2xl transition"
+            >
+              ПОНЯТНО
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1447,6 +1447,9 @@ export default function App() {
             setIsPinLocked(true);
             setShowSettings(false);
           }}
+          onUpdateName={(newName) => {
+            setCurrentUser((prev) => prev ? { ...prev, first_name: newName } : null);
+          }}
         />
       )}
 
@@ -1480,59 +1483,59 @@ export default function App() {
 
       {/* Add Friend Modal */}
       {showAddFriend && (
-        <div className="fixed inset-0 z-[1000] bg-slate-950/80 backdrop-blur-md flex flex-col justify-center p-4 sm:p-5 animate-fade-in font-sans overflow-y-auto">
-          <div className="bg-gradient-to-br from-slate-900/90 to-slate-950/90 border border-slate-800 p-5 sm:p-6 rounded-3xl flex flex-col gap-5 max-w-md w-full mx-auto relative shadow-2xl max-h-[90vh] overflow-y-auto scrollbar-thin my-auto">
+        <div className="fixed inset-0 z-[1000] bg-slate-950/85 backdrop-blur-md flex flex-col justify-center p-3 sm:p-5 animate-fade-in font-sans overflow-y-auto overflow-x-hidden">
+          <div className="bg-gradient-to-br from-slate-900/95 to-slate-950/95 border border-slate-800/90 p-4 sm:p-6 rounded-3xl flex flex-col gap-4 sm:gap-5 max-w-md w-full mx-auto relative shadow-2xl max-h-[95vh] overflow-y-auto scrollbar-none my-auto">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
             
             <button
               onClick={() => setShowAddFriend(false)}
-              className="absolute top-5 right-5 text-slate-500 hover:text-slate-300 transition-colors bg-slate-950/50 p-1.5 rounded-full"
+              className="absolute top-4 right-4 text-slate-500 hover:text-slate-300 transition-colors bg-slate-950/50 p-1.5 rounded-full"
             >
               <X className="w-4 h-4" />
             </button>
             
             <div className="flex flex-col gap-1 pr-8">
-              <h3 className="font-extrabold font-mono tracking-tight text-slate-100 text-xl uppercase">Добавить контакт</h3>
-              <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
+              <h3 className="font-extrabold font-mono tracking-tight text-slate-100 text-lg sm:text-xl uppercase">Добавить контакт</h3>
+              <p className="text-[10px] sm:text-[11px] text-slate-400 leading-relaxed font-semibold">
                 Введите идентификатор пользователя для безопасного соединения
               </p>
             </div>
 
             {currentUser && (
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] text-slate-500 font-bold font-mono tracking-wider uppercase pl-1">Ваш ID</span>
-                <div className="flex items-center justify-between bg-slate-950/60 rounded-2xl px-4 py-3 border border-slate-800/80">
-                  <span className="text-sm text-slate-300 font-mono font-bold select-all">{currentUser.id}</span>
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] sm:text-[10px] text-slate-500 font-bold font-mono tracking-wider uppercase pl-1">Ваш ID</span>
+                <div className="flex items-center justify-between bg-slate-950/60 rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 border border-slate-800/80">
+                  <span className="text-xs sm:text-sm text-slate-300 font-mono font-bold select-all">{currentUser.id}</span>
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(currentUser.id.toString());
                       hapticImpact("success");
                     }}
-                    className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-primary font-bold font-mono text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-primary/20"
+                    className="flex items-center gap-1 bg-slate-900 hover:bg-slate-800 text-primary font-bold font-mono text-[9px] sm:text-[10px] uppercase tracking-wider px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-lg transition-colors cursor-pointer border border-primary/20"
                     title="Копировать"
                   >
-                    <Copy className="w-3 h-3" />
+                    <Copy className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                     Копировать
                   </button>
                 </div>
               </div>
             )}
             
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[10px] text-slate-500 font-bold font-mono tracking-wider uppercase pl-1">ID Контакта</span>
+            <div className="flex flex-col gap-1">
+              <span className="text-[9px] sm:text-[10px] text-slate-500 font-bold font-mono tracking-wider uppercase pl-1">ID Контакта</span>
               <input
                 type="number"
                 placeholder="000000000"
                 value={friendIdInput}
                 onChange={(e) => setFriendIdInput(e.target.value)}
-                className="w-full bg-slate-950/50 border border-slate-800 focus:border-primary/50 text-slate-100 rounded-2xl px-5 py-4 font-mono font-bold text-lg outline-none transition-colors"
+                className="w-full bg-slate-950/50 border border-slate-800 focus:border-primary/50 text-slate-100 rounded-2xl px-4 py-3 sm:px-5 sm:py-4 font-mono font-bold text-base sm:text-lg outline-none transition-colors"
               />
             </div>
             
             <button
               onClick={handleAddFriend}
               disabled={searchSpinner}
-              className="w-full bg-primary hover:bg-primary-hover active:bg-primary/90 text-white font-bold font-mono tracking-wide py-4 rounded-2xl flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] mt-2 shadow-lg shadow-primary/20 disabled:opacity-70 disabled:active:scale-100"
+              className="w-full bg-primary hover:bg-primary-hover active:bg-primary/90 text-white font-bold font-mono tracking-wide py-3 sm:py-4 rounded-2xl flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] mt-1 shadow-lg shadow-primary/20 disabled:opacity-70 disabled:active:scale-100"
             >
               {searchSpinner ? <Loader2 className="w-5 h-5 animate-spin" /> : 'ОТПРАВИТЬ ЗАПРОС'}
             </button>
