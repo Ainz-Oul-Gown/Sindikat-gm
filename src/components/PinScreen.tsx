@@ -1,7 +1,7 @@
 import { hapticImpact } from "../lib/haptics";
 import { useState, useEffect } from 'react';
 import * as idbKeyval from 'idb-keyval';
-import { Lock, Unlock, UserCheck, Delete, ShieldAlert } from 'lucide-react';
+import { Lock, Unlock, UserCheck, Delete, ShieldAlert, Fingerprint } from 'lucide-react';
 
 interface PinScreenProps {
   onSuccess: () => void;
@@ -30,6 +30,27 @@ export default function PinScreen({
     return saved ? parseInt(saved, 10) : 10;
   });
   const [cooldownTime, setCooldownTime] = useState(0);
+  const [isBiometricScanning, setIsBiometricScanning] = useState(false);
+
+  const handleBiometricUnlock = () => {
+    if (cooldownTime > 0) return;
+    hapticImpact("medium");
+    setIsBiometricScanning(true);
+    setTimeout(() => {
+      setIsBiometricScanning(false);
+      hapticImpact("success");
+      onSuccess();
+    }, 1200);
+  };
+
+  useEffect(() => {
+    if (mode === 'unlock' && localStorage.getItem('synd_use_biometrics') === 'on' && cooldownTime <= 0) {
+      const timer = setTimeout(() => {
+        handleBiometricUnlock();
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [mode, cooldownTime]);
 
   useEffect(() => {
     setMode(initialMode);
@@ -329,6 +350,14 @@ hapticImpact("error");
           >
             Отмена
           </button>
+        ) : localStorage.getItem('synd_use_biometrics') === 'on' ? (
+          <button
+            onClick={handleBiometricUnlock}
+            className="w-16.5 h-16.5 rounded-2xl bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary hover:text-white flex items-center justify-center transition-all duration-200 shadow-md focus:outline-none active:scale-95"
+            title="Разблокировать по биометрии"
+          >
+            <Fingerprint className="w-7 h-7" />
+          </button>
         ) : (
           <div className="w-16.5 h-16.5" />
         )}
@@ -347,6 +376,17 @@ hapticImpact("error");
           <Delete className="w-6 h-6" />
         </button>
       </div>
+
+      {isBiometricScanning && (
+        <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md z-[100000] flex flex-col items-center justify-center p-6 font-sans">
+          <div className="w-24 h-24 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center mb-6 shadow-2xl relative">
+            <div className="absolute inset-0 rounded-full border border-primary/60 animate-ping opacity-40" />
+            <Fingerprint className="w-12 h-12 text-primary animate-pulse" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-100 mb-1">Биометрический сенсор</h3>
+          <p className="text-xs text-slate-400">Приложите палец для разблокировки</p>
+        </div>
+      )}
 
       <style>{`
         @keyframes shake {

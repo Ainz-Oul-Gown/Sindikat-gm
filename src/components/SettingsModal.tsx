@@ -292,6 +292,38 @@ hapticImpact("selection");
     hapticImpact("medium");
   };
 
+  const handleTogglePasskey = async () => {
+    hapticImpact("selection");
+    if (hasPasskey) {
+      if (confirm("Вы действительно хотите отключить вход по Passkey (Биометрии) на этом устройстве?")) {
+        try {
+          await idbKeyval.del('syndicate_passkey_credential');
+          localStorage.removeItem('synd_use_biometrics');
+          setHasPasskey(false);
+          hapticImpact("success");
+        } catch (e) {
+          console.error('Failed to disable passkey', e);
+        }
+      }
+    } else {
+      if (confirm("Включить быстрый вход по Passkey (Биометрии) на этом устройстве? Это позволит разблокировать приложение по отпечатку пальца или FaceID без ввода PIN-кода.")) {
+        try {
+          const simulatedSeed = `passkey security credential anchor secret syndicate node ${userName.trim().toLowerCase()}`;
+          await idbKeyval.set('syndicate_passkey_credential', {
+            id: userId,
+            name: userName,
+            seed: simulatedSeed
+          });
+          localStorage.setItem('synd_use_biometrics', 'on');
+          setHasPasskey(true);
+          hapticImpact("success");
+        } catch (e) {
+          console.error('Failed to enable passkey', e);
+        }
+      }
+    }
+  };
+
   const handlePanicWipeClick = () => {
     if (
       confirm(
@@ -335,9 +367,9 @@ hapticImpact("selection");
   }
 
   return (
-    <div className="fixed inset-0 z-[1000] bg-slate-950/95 backdrop-blur-3xl flex flex-col p-4 sm:p-6 overflow-y-auto select-none animate-fade-in text-slate-100 font-sans">
+    <div className="fixed inset-0 z-[1000] bg-slate-950/95 backdrop-blur-3xl flex flex-col select-none animate-fade-in text-slate-100 font-sans">
       {/* Header */}
-      <div className="flex justify-between items-center pb-4 border-b border-slate-900 mb-6">
+      <div className="flex justify-between items-center px-4 sm:px-6 py-4 border-b border-slate-900 shrink-0">
         <button
           onClick={onClose}
           className="w-10 h-10 rounded-full bg-slate-900 border border-slate-800/80 flex items-center justify-center text-slate-400 hover:text-slate-200 transition-all duration-200 hover:scale-105 active:scale-95 focus:outline-none"
@@ -348,7 +380,9 @@ hapticImpact("selection");
         <div className="w-10 h-10" />
       </div>
 
-      <div className="flex flex-col gap-6.5 max-w-md mx-auto w-full pb-10">
+      {/* Scrollable Content */}
+      <div className="flex-grow overflow-y-auto px-4 sm:px-6 py-6 scrollbar-none">
+        <div className="flex flex-col gap-6.5 max-w-md mx-auto w-full pb-10">
         {/* User profile & cryptographic cipher */}
         <div className="bg-gradient-to-br from-slate-900/80 to-slate-950/80 border border-slate-900 rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-xl flex flex-col gap-4">
           <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
@@ -671,12 +705,15 @@ hapticImpact("selection");
             )}
 
             {/* Passkeys / Biometrics */}
-            <div className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-900/35 transition duration-150">
+            <div
+              onClick={handleTogglePasskey}
+              className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-900/35 transition duration-150 cursor-pointer"
+            >
               <div className="flex items-center gap-3 text-slate-300">
                 <Fingerprint className="w-4.5 h-4.5 text-primary" />
                 <span className="text-sm font-medium">Вход по Passkey (Биометрия)</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                 <button
                   onClick={() => { hapticImpact("selection"); setShowBiometricInfo(true); }}
                   className="p-1.5 hover:bg-slate-900 rounded-lg text-slate-500 hover:text-slate-300 transition"
@@ -702,6 +739,7 @@ hapticImpact("selection");
             </button>
           </div>
         </div>
+      </div>
       </div>
 
       {/* Biometric Security Info Modal Overlay */}
