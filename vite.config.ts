@@ -13,8 +13,9 @@ export default defineConfig(() => {
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: 'auto',
-        includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png'],
+        includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png', 'screenshot-wide.png', 'screenshot-narrow.png'],
         manifest: {
+          id: '/Sindikat-gm/',
           name: 'Syndicate',
           short_name: 'Syndicate',
           theme_color: '#0f172a',
@@ -26,13 +27,39 @@ export default defineConfig(() => {
               src: 'icon-192.png',
               sizes: '192x192',
               type: 'image/png',
-              purpose: 'any maskable'
+              purpose: 'any'
+            },
+            {
+              src: 'icon-192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'maskable'
             },
             {
               src: 'icon-512.png',
               sizes: '512x512',
               type: 'image/png',
-              purpose: 'any maskable'
+              purpose: 'any'
+            },
+            {
+              src: 'icon-512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable'
+            }
+          ],
+          screenshots: [
+            {
+              src: 'screenshot-wide.png',
+              sizes: '1280x720',
+              type: 'image/png',
+              form_factor: 'wide'
+            },
+            {
+              src: 'screenshot-narrow.png',
+              sizes: '720x1280',
+              type: 'image/png',
+              form_factor: 'narrow'
             }
           ]
         },
