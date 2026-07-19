@@ -13,7 +13,7 @@ export default defineConfig(() => {
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: 'auto',
-        includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png', 'screenshot-wide.png', 'screenshot-narrow.png'],
+        includeAssets: ['icon.svg'],
         manifest: {
           id: '/Sindikat-gm/',
           name: 'Syndicate',
@@ -32,25 +32,13 @@ export default defineConfig(() => {
           ],
           icons: [
             {
-              src: './icon-192.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'any'
-            },
-            {
-              src: './icon-192.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'maskable'
-            },
-            {
-              src: './icon-512.png',
+              src: 'https://cdn-icons-png.flaticon.com/512/2592/2592317.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any'
             },
             {
-              src: './icon-512.png',
+              src: 'https://cdn-icons-png.flaticon.com/512/2592/2592317.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable'
@@ -58,15 +46,15 @@ export default defineConfig(() => {
           ],
           screenshots: [
             {
-              src: './screenshot-wide.png',
+              src: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1280&h=720&q=80',
               sizes: '1280x720',
-              type: 'image/png',
+              type: 'image/jpeg',
               form_factor: 'wide'
             },
             {
-              src: './screenshot-narrow.png',
+              src: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=720&h=1280&q=80',
               sizes: '720x1280',
-              type: 'image/png',
+              type: 'image/jpeg',
               form_factor: 'narrow'
             }
           ]
