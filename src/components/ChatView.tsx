@@ -1316,6 +1316,7 @@ hapticImpact("selection");
                       hasTranscript={m.voiceData.hasTranscript}
                       msgId={m.id}
                       onTranscribe={handleManualTranscribe}
+                      isMine={m.isMine}
                     />
                   ) : m.inviteData ? (
                     <div className="flex flex-col gap-3 p-2 bg-black/15 rounded-xl border border-white/5">
@@ -1567,96 +1568,136 @@ hapticImpact("selection");
 
       {/* Info details screen */}
       {activeModal === 'info' && (
-        <div className="fixed inset-0 z-[1000] bg-slate-950 p-6 overflow-y-auto flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <button onClick={() => setActiveModal('none')} className="text-primary font-medium">
-              Закрыть
-            </button>
-            <span className="font-bold text-slate-200">Информация</span>
-            <div className="w-10" />
-          </div>
-
-          <div className="flex flex-col items-center mb-8">
-            <div className="w-20 h-20 rounded-full bg-primary-light border border-primary-border text-primary flex items-center justify-center text-3xl font-bold mb-3">
-              {(isGroup ? groupName : chat.name).charAt(0).toUpperCase()}
-            </div>
-            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-              {isGroup ? groupName : chat.name}
-              {isGroup && (
-                <button onClick={handleEditGroupName} className="text-slate-500 hover:text-slate-300">
-                  <Edit2 className="w-4.5 h-4.5" />
-                </button>
-              )}
-            </h2>
-            <span className="text-xs text-slate-500 font-mono mt-1 select-text">ID: {chat.id}</span>
-          </div>
-
-          {isGroup ? (
-            <div className="flex flex-col gap-5 flex-grow">
+        <div className="fixed inset-0 z-[1000] bg-slate-950 p-5 overflow-y-auto flex flex-col font-sans animate-fade-in">
+          <div className="max-w-md mx-auto w-full flex flex-col h-full">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-900 mb-8 shrink-0">
               <button
-                onClick={() => setActiveModal('invite-friend')}
-                className="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-1.5 transition"
+                onClick={() => setActiveModal('none')}
+                className="text-slate-400 hover:text-slate-200 bg-slate-900/50 border border-slate-900 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
               >
-                <UserPlus className="w-5 h-5" /> Позвать брата
+                Закрыть
               </button>
+              <span className="font-extrabold font-mono tracking-wider text-slate-300 text-xs uppercase">
+                {isGroup ? 'Инфо Группы' : 'Профиль'}
+              </span>
+              <div className="w-16" />
+            </div>
 
-              <div className="bg-slate-900/40 border border-slate-900 p-4 rounded-xl">
-                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                  Участники ({groupMembers.length})
-                </h4>
-                <div className="flex flex-col gap-3">
-                  {groupMembers.map((m) => (
-                    <div key={m.tg_id} className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-sm font-bold">
-                        {m.first_name.charAt(0).toUpperCase()}
+            <div className="flex flex-col items-center mb-10 relative">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+              
+              <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-800 flex items-center justify-center text-4xl font-bold font-mono text-primary shadow-xl shadow-black/50 mb-4 z-10">
+                {(isGroup ? groupName : chat.name).charAt(0).toUpperCase()}
+              </div>
+              
+              <div className="flex items-center justify-center gap-2 mb-1.5 z-10 w-full px-4">
+                <h2 className="text-2xl font-black text-slate-100 tracking-tight truncate text-center">
+                  {isGroup ? groupName : chat.name}
+                </h2>
+                {isGroup && (
+                  <button onClick={handleEditGroupName} className="text-slate-500 hover:text-primary transition-colors flex-shrink-0" title="Изменить имя">
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2 z-10">
+                <span className="text-[10px] font-bold font-mono text-slate-600 uppercase tracking-widest">ID</span>
+                <span className="text-xs text-slate-400 font-mono select-text bg-slate-900/50 px-2.5 py-1 rounded-lg border border-slate-800/50">{chat.id}</span>
+              </div>
+            </div>
+
+            {isGroup ? (
+              <div className="flex flex-col gap-5 flex-grow z-10">
+                <button
+                  onClick={() => setActiveModal('invite-friend')}
+                  className="w-full bg-primary hover:bg-primary-hover active:bg-primary/90 text-white font-bold font-mono tracking-wide py-4 rounded-2xl flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] shadow-lg shadow-primary/20"
+                >
+                  <UserPlus className="w-5 h-5" /> ПОЗВАТЬ В ГРУППУ
+                </button>
+
+                <div className="bg-slate-900/30 border border-slate-900/80 p-5 rounded-3xl mt-2">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-[10px] font-bold text-slate-500 font-mono uppercase tracking-widest">
+                      Участники
+                    </h4>
+                    <span className="text-[10px] font-bold text-primary font-mono bg-primary/10 px-2 py-0.5 rounded-md">
+                      {groupMembers.length}
+                    </span>
+                  </div>
+                  
+                  <div className="flex flex-col gap-3">
+                    {groupMembers.map((m) => (
+                      <div key={m.tg_id} className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-800/30 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700/50 text-slate-300 flex items-center justify-center text-sm font-bold shadow-inner">
+                            {m.first_name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex flex-col leading-none gap-1">
+                            <span className="text-sm font-bold text-slate-200">
+                              {m.first_name}
+                            </span>
+                            <span className="text-[9px] font-mono text-slate-500 uppercase">
+                              ID: {m.tg_id}
+                            </span>
+                          </div>
+                        </div>
+                        {m.tg_id === currentUser.id && (
+                          <span className="text-[9px] font-bold text-emerald-500 font-mono bg-emerald-500/10 px-2 py-1 rounded-md uppercase tracking-wider">
+                            Вы
+                          </span>
+                        )}
                       </div>
-                      <span className="text-sm font-semibold text-slate-200">
-                        {m.first_name} {m.tg_id === currentUser.id && '(Вы)'}
-                      </span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 mt-auto pt-6">
+                  <button
+                    onClick={handleLeaveGroup}
+                    className="w-full bg-slate-900/50 hover:bg-slate-800 text-rose-400 font-bold font-mono tracking-wide py-3.5 rounded-2xl flex items-center justify-center gap-2 transition border border-rose-500/20"
+                  >
+                    <LogOut className="w-4 h-4" /> ВЫЙТИ ИЗ ГРУППЫ
+                  </button>
+                  <button
+                    onClick={handleDeleteGroupForEveryone}
+                    className="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-bold font-mono tracking-wide py-3.5 rounded-2xl flex items-center justify-center gap-2 transition border border-rose-500/30"
+                  >
+                    <Trash className="w-4 h-4" /> УДАЛИТЬ ДЛЯ ВСЕХ
+                  </button>
                 </div>
               </div>
-
-              <div className="flex flex-col gap-2 mt-auto">
+            ) : (
+              <div className="flex flex-col gap-4 mt-auto pt-6 z-10">
                 <button
-                  onClick={handleLeaveGroup}
-                  className="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-semibold py-3.5 rounded-xl flex items-center justify-center gap-1.5 transition"
+                  onClick={handleRemoveFriendship}
+                  className="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-bold font-mono tracking-wide py-4 rounded-2xl flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] border border-rose-500/20"
                 >
-                  <LogOut className="w-5 h-5" /> Выйти из группы
-                </button>
-                <button
-                  onClick={handleDeleteGroupForEveryone}
-                  className="w-full border border-rose-500/30 hover:bg-rose-500/5 text-rose-500 font-semibold py-3.5 rounded-xl flex items-center justify-center gap-1.5 transition"
-                >
-                  <Trash className="w-5 h-5" /> Удалить для всех
+                  <UserMinus className="w-5 h-5" /> УДАЛИТЬ КОНТАКТ
                 </button>
               </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4 mt-auto">
-              <button
-                onClick={handleRemoveFriendship}
-                className="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-semibold py-3.5 rounded-xl flex items-center justify-center gap-1.5 transition"
-              >
-                <UserMinus className="w-5 h-5" /> Удалить из друзей
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
       {/* Deep Search screen */}
       {activeModal === 'search' && (
-        <div className="fixed inset-0 z-[1000] bg-slate-950 p-5 overflow-y-auto flex flex-col">
-          <div className="flex justify-between items-center mb-6 flex-shrink-0">
-            <button onClick={() => setActiveModal('none')} className="text-primary font-medium">
-              Закрыть
+        <div className="fixed inset-0 z-[1000] bg-slate-950 p-5 overflow-y-auto flex flex-col font-sans animate-fade-in">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-900 mb-6 shrink-0 max-w-3xl mx-auto w-full">
+            <button
+              onClick={() => setActiveModal('none')}
+              className="text-slate-400 hover:text-slate-200 bg-slate-900/50 border border-slate-900 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4" /> Назад
             </button>
-            <span className="font-bold text-slate-200">Поиск в чате</span>
-            <div className="w-10" />
+            <span className="font-extrabold font-mono tracking-wider text-slate-300 text-xs uppercase">
+              Глубокий поиск
+            </span>
+            <div className="w-16" />
           </div>
-          <div className="flex-grow overflow-hidden">
+          <div className="flex-grow overflow-hidden max-w-3xl mx-auto w-full flex flex-col relative bg-slate-900/30 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-32 bg-primary/5 blur-3xl pointer-events-none" />
             <DeepSearch chatId={chat.id} aesKey={chatKey} userId={currentUser.id} />
           </div>
         </div>
@@ -1726,72 +1767,100 @@ hapticImpact("selection");
 
       {/* Add Debt view screen */}
       {activeModal === 'add-debt' && (
-        <div className="fixed inset-0 z-[1000] bg-slate-950 p-6 overflow-y-auto flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <button onClick={() => setActiveModal('debts')} className="text-primary font-medium">
-              Назад
-            </button>
-            <span className="font-bold text-slate-200">Оформление долга</span>
-            <div className="w-10" />
-          </div>
-
-          <div className="bg-slate-900/60 border border-slate-900 p-5 rounded-2xl flex flex-col gap-4">
-            <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">
-                Я должен (в рублях)
-              </label>
-              <input
-                type="number"
-                value={debtRubles}
-                onChange={(e) => setDebtRubles(e.target.value)}
-                placeholder="Сумма..."
-                className="w-full bg-slate-950 border border-slate-900 text-slate-200 rounded-xl px-4 py-3 text-lg font-bold text-center focus:border-primary outline-none"
-              />
+        <div className="fixed inset-0 z-[1000] bg-slate-950 p-5 overflow-y-auto flex flex-col font-sans animate-fade-in">
+          <div className="max-w-md mx-auto w-full flex flex-col h-full">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-900 mb-6 shrink-0">
+              <button
+                onClick={() => setActiveModal('debts')}
+                className="text-slate-400 hover:text-slate-200 bg-slate-900/50 border border-slate-900 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" /> Назад
+              </button>
+              <span className="font-extrabold font-mono tracking-wider text-slate-300 text-xs uppercase">
+                Новый долг
+              </span>
+              <div className="w-16" />
             </div>
 
-            <div className="flex flex-col">
-              <label className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">
-                В чем принимает друг
-              </label>
-              <div className="relative w-full">
-                <select
-                  onChange={(e) => {
-                    const selected = currencies.find((c) => c.id === e.target.value);
-                    setSelectedCurrency(selected || null);
-                  }}
-                  className="w-full bg-slate-950 border border-slate-900 text-slate-200 rounded-xl px-4 py-3 text-base focus:border-primary outline-none appearance-none"
-                >
-                  {currencies.length === 0 && <option value="">Загрузка...</option>}
-                  {currencies.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} (Курс: {c.rub_value} ₽)
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
-                  <ArrowDown className="w-4 h-4" />
+            <div className="bg-gradient-to-br from-slate-900/80 to-slate-950/80 border border-slate-900 p-5 rounded-3xl relative overflow-hidden shadow-xl flex flex-col gap-5">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
+
+              <div className="flex flex-col gap-2 relative">
+                <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-widest pl-1">
+                  Я должен (В рублях)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={debtRubles}
+                    onChange={(e) => setDebtRubles(e.target.value)}
+                    placeholder="0"
+                    className="w-full bg-slate-950/50 border border-slate-800 focus:border-primary/50 text-slate-100 rounded-2xl px-5 py-4 text-2xl font-bold font-mono outline-none transition-colors"
+                  />
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 font-bold font-mono text-xl">₽</span>
                 </div>
               </div>
-            </div>
 
-            {selectedCurrency && debtRubles && parseFloat(debtRubles) > 0 && (
-              <div className="text-center py-4 bg-slate-950/40 rounded-xl border border-slate-900 my-2">
-                <span className="text-xs text-slate-500 font-semibold tracking-wide uppercase">
-                  Итого к выплате
-                </span>
-                <span className="text-2xl font-bold text-emerald-500 block mt-1.5">
-                  {(parseFloat(debtRubles) / selectedCurrency.rub_value).toFixed(2)}{' '}
-                  {selectedCurrency.name}
-                </span>
+              <div className="flex flex-col gap-2 relative">
+                <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-widest pl-1">
+                  В чем принимает друг
+                </label>
+                <div className="relative w-full">
+                  <select
+                    onChange={(e) => {
+                      const selected = currencies.find((c) => c.id === e.target.value);
+                      setSelectedCurrency(selected || null);
+                    }}
+                    className="w-full bg-slate-950/50 border border-slate-800 focus:border-primary/50 text-slate-200 font-semibold rounded-2xl px-5 py-4 text-base outline-none appearance-none cursor-pointer transition-colors"
+                  >
+                    {currencies.length === 0 && <option value="">Загрузка...</option>}
+                    {currencies.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} (Курс: {c.rub_value} ₽)
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400 bg-slate-950/50 pl-2">
+                    <ArrowDown className="w-5 h-5" />
+                  </div>
+                </div>
               </div>
-            )}
 
-            <button
-              onClick={handleSaveDebt}
-              className="w-full bg-primary hover:bg-primary-hover text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-1.5 transition"
-            >
-              Закрепить долг
-            </button>
+              {selectedCurrency && debtRubles && parseFloat(debtRubles) > 0 ? (
+                <div className="text-center py-5 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 my-1 relative overflow-hidden animate-fade-in">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-500/5 to-transparent animate-shimmer" />
+                  <span className="text-[10px] text-emerald-500/70 font-bold font-mono tracking-widest uppercase">
+                    Итого к выплате
+                  </span>
+                  <div className="flex items-center justify-center gap-2 mt-1">
+                    <span className="text-3xl font-black text-emerald-400 font-mono tracking-tight">
+                      {(parseFloat(debtRubles) / selectedCurrency.rub_value).toFixed(2)}
+                    </span>
+                    <span className="text-xl font-bold text-emerald-500/80 mt-1">
+                      {selectedCurrency.name}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-5 bg-slate-950/40 rounded-2xl border border-slate-900/60 my-1">
+                  <span className="text-[10px] text-slate-600 font-bold font-mono tracking-widest uppercase">
+                    Итого к выплате
+                  </span>
+                  <div className="flex items-center justify-center mt-1">
+                    <span className="text-xl font-bold text-slate-500 font-mono tracking-tight">
+                      0.00
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={handleSaveDebt}
+                className="w-full bg-primary hover:bg-primary-hover active:bg-primary/90 text-white font-bold font-mono tracking-wide py-4 rounded-2xl flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] mt-2 shadow-lg shadow-primary/20"
+              >
+                ЗАФИКСИРОВАТЬ
+              </button>
+            </div>
           </div>
         </div>
       )}

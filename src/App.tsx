@@ -18,6 +18,13 @@ import {
   HelpCircle,
   Key,
   Download,
+  Lock,
+  ShieldCheck,
+  Fingerprint,
+  Copy,
+  Check,
+  Activity,
+  Search,
 } from 'lucide-react';
 import { supabaseClient, setSupabaseToken, parseJwt } from './lib/supabase';
 import { checkCryptoKeys, generateChatKey, encryptChatKeyForFriend, decryptChatKey, getFingerprint } from './lib/crypto';
@@ -38,6 +45,9 @@ export default function App() {
   // Navigation states
   const [activeScreen, setActiveScreen] = useState<'main' | 'chat' | 'sync_waiting'>('main');
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
+  const [activeTab, setActiveTab] = useState<'all' | 'friends' | 'groups' | 'saved'>('all');
+  const [chatSearch, setChatSearch] = useState('');
+  const [copiedFingerprint, setCopiedFingerprint] = useState(false);
 
   // Modals & Panels
   const [showSettings, setShowSettings] = useState(false);
@@ -897,11 +907,23 @@ export default function App() {
     const mq = window.matchMedia('(display-mode: standalone)');
     mq.addEventListener('change', checkStandalone);
 
+    const handleBackgroundAutoLock = () => {
+      if (localStorage.getItem('synd_pin_hash')) {
+        if (document.hidden) {
+          setIsPinLocked(true);
+          setPinMode('unlock');
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleBackgroundAutoLock);
+
     return () => {
       if (workerRef.current) {
         workerRef.current.terminate();
       }
       mq.removeEventListener('change', checkStandalone);
+      document.removeEventListener('visibilitychange', handleBackgroundAutoLock);
     };
   }, []);
 
@@ -1042,20 +1064,53 @@ export default function App() {
           worker={workerRef.current}
         />
       ) : (
-        <div className="flex flex-col h-full overflow-y-auto p-4 flex-grow pb-32">
+        <div className="flex flex-col h-full overflow-hidden px-3 pt-2 pb-4 flex-grow relative max-w-3xl mx-auto w-full">
           {/* Header */}
-          <div className="flex items-center justify-between py-3 mb-5 border-b border-slate-900 flex-shrink-0">
-            <h2 className="text-xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-400">
-              СИНДИКАТ
-            </h2>
-            <div className="flex items-center gap-1">
+          <div className="flex items-center justify-between py-2 mb-3 border-b border-slate-900 flex-shrink-0">
+            <div 
+              onClick={() => hapticImpact("selection")}
+              className="flex items-center gap-2.5 select-none group cursor-pointer"
+            >
+              <div className="w-6.5 h-6.5 relative flex items-center justify-center overflow-hidden rounded-lg border border-slate-800 bg-slate-900/60 shadow-sm transition-all duration-300 group-hover:border-primary/40 group-hover:shadow-[0_0_12px_var(--primary-border)]">
+                {/* Ambient inner gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/15 to-transparent pointer-events-none" />
+                
+                {/* Micro spinning tactical rings */}
+                <div className="absolute inset-0.5 rounded border border-dashed border-primary/20 animate-cyber-spin pointer-events-none" />
+                <div className="absolute inset-1.5 rounded-sm border border-primary/10 animate-cyber-spin-reverse pointer-events-none" />
+                
+                {/* Interactive glowing status core */}
+                <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)] z-10 animate-pulse group-hover:scale-125 transition duration-300" />
+              </div>
+              <span className="font-mono text-[11px] font-black tracking-[0.18em] text-slate-200 group-hover:text-primary transition duration-300 mt-0.5 uppercase">
+                Syndicate
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {/* User Avatar Chip (triggers settings modal) */}
+              <button
+                onClick={() => { hapticImpact("selection"); setShowSettings(true); }}
+                className="flex items-center gap-2.5 bg-slate-900/40 hover:bg-slate-900/80 border border-slate-900 rounded-xl px-3 py-1.5 transition active:scale-95 cursor-pointer select-none max-w-[200px] sm:max-w-xs text-left"
+                title="Мой профиль и настройки"
+              >
+                <div className="w-6 h-6 shrink-0 rounded-md bg-gradient-to-tr from-primary to-emerald-500 text-white font-bold text-[10px] flex items-center justify-center uppercase select-none">
+                  {currentUser?.first_name.charAt(0)}
+                </div>
+                <div className="flex flex-col min-w-0 leading-none">
+                  <span className="font-bold text-slate-200 text-xs truncate leading-none">{currentUser?.first_name}</span>
+                  <span className="text-[9px] text-slate-400 font-mono font-bold leading-none mt-0.5 whitespace-nowrap">
+                    ID: {currentUser?.id}
+                  </span>
+                </div>
+              </button>
+
               {!isStandalone && (
                 <button
                   onClick={async () => {
                     hapticImpact("selection");
                     const tgWebApp = window.Telegram?.WebApp as any;
                     if (tgWebApp && tgWebApp.platform && tgWebApp.platform !== 'unknown') {
-                      // We are in Telegram WebApp, open link in external browser with token
                       const token = localStorage.getItem('synd_token');
                       if (token) {
                         const url = new URL(window.location.href);
@@ -1074,162 +1129,261 @@ export default function App() {
                       setShowInstallPrompt(true);
                     }
                   }}
-                  className="p-2 text-slate-400 hover:text-slate-200 active:scale-95 transition focus:outline-none"
+                  className="p-2.5 rounded-xl bg-slate-900/50 hover:bg-slate-900 text-slate-400 hover:text-slate-200 active:scale-95 transition duration-150 border border-slate-900 cursor-pointer"
                   title="Скачать приложение"
                 >
-                  <Download className="w-5.5 h-5.5" />
+                  <Download className="w-5 h-5" />
                 </button>
               )}
-              <button
-                onClick={() => { hapticImpact("selection"); setShowSettings(true); }}
-                className="p-2 text-slate-400 hover:text-slate-200 active:scale-95 transition focus:outline-none"
-              >
-                <Settings className="w-5.5 h-5.5" />
-              </button>
             </div>
           </div>
 
-          {/* Profile overview card */}
-          <div className="bg-slate-900/60 border border-slate-900 rounded-2xl p-4 flex items-center justify-between mb-5 flex-shrink-0 shadow-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-amber-500 to-rose-500 text-white font-bold text-base flex items-center justify-center uppercase shadow-md shadow-amber-500/10">
-                {currentUser?.first_name.charAt(0)}
-              </div>
-              <div className="flex flex-col">
-                <span className="font-semibold text-slate-100 text-base">{currentUser?.first_name}</span>
-                <span className="text-[11px] text-slate-500 font-semibold tracking-wide uppercase mt-0.5">
-                  Мой ID: {currentUser?.id}
-                </span>
-                {myFingerprint && (
-                  <span className="text-[11px] text-slate-500/80 font-mono tracking-wider mt-0.5">
-                    ШИФР: {myFingerprint}
-                  </span>
-                )}
-              </div>
+          {/* Quick Search and Actions bar */}
+          <div className="flex items-center gap-2 mb-4 flex-shrink-0">
+            <div className="relative flex-grow">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Поиск чатов и контактов..."
+                value={chatSearch}
+                onChange={(e) => setChatSearch(e.target.value)}
+                className="w-full bg-slate-900/20 border border-slate-900/80 focus:border-primary/50 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 outline-none transition duration-150"
+              />
+              {chatSearch && (
+                <button
+                  onClick={() => setChatSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs font-semibold px-1"
+                >
+                  Очистить
+                </button>
+              )}
             </div>
-          </div>
-
-          {/* Friend relationships workflows */}
-          <div className="flex justify-between items-center mb-3.5 pr-1 flex-shrink-0">
-            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Братва
-            </h3>
+            
             <button
               onClick={() => { hapticImpact("selection"); setShowAddFriend(true); }}
-              className="w-8 h-8 bg-primary-light text-primary border border-primary-border rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition focus:outline-none"
+              className="p-2.5 rounded-xl bg-slate-900/30 hover:bg-slate-900 text-primary border border-slate-900 hover:border-slate-800 transition active:scale-95 cursor-pointer flex-shrink-0"
+              title="Добавить контакт"
             >
-              <UserPlus className="w-4.5 h-4.5" />
+              <UserPlus className="w-5 h-5" />
+            </button>
+            
+            <button
+              onClick={() => { hapticImpact("selection"); setShowCreateGroup(true); }}
+              className="p-2.5 rounded-xl bg-slate-900/30 hover:bg-slate-900 text-emerald-400 border border-slate-900 hover:border-slate-800 transition active:scale-95 cursor-pointer flex-shrink-0"
+              title="Создать группу"
+            >
+              <Plus className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Chats view lists */}
-          <div className="flex-grow flex flex-col gap-2.5 overflow-y-auto">
-            {/* 1. Saved Messages self-chat */}
-            <div
-              onClick={handleOpenSavedMessages}
-              className="flex items-center justify-between p-4 bg-slate-900/40 border border-slate-900/60 rounded-xl hover:bg-slate-900/60 transition cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary-light text-primary flex items-center justify-center shadow-inner">
-                  <Bookmark className="w-5 h-5 fill-current" />
-                </div>
-                <div>
-                  <div className="font-semibold text-slate-100 text-base">Избранное</div>
-                  <div className="text-xs text-primary mt-0.5 font-medium">Заметки и файлы</div>
-                </div>
-              </div>
-              <ChevronRight className="w-4.5 h-4.5 text-slate-500" />
-            </div>
-
-            {/* 2. Inbound friend requests */}
-            {friendRequests.map((req) => (
-              <div
-                key={req.id}
-                className="flex items-center justify-between p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold text-sm">
-                    {req.user.first_name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-slate-100 text-sm">{req.user.first_name}</div>
-                    <div className="text-[11px] text-amber-500 font-medium mt-0.5">
-                      Хочет добавить вас в друзья
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleAcceptFriend(req.id)}
-                    className="w-8 h-8 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center transition active:scale-95"
-                  >
-                    <UserCheck className="w-4.5 h-4.5" />
-                  </button>
-                  <button
-                    onClick={() => handleRejectFriend(req.id)}
-                    className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center hover:bg-rose-500/20 transition active:scale-95"
-                  >
-                    <UserMinus className="w-4.5 h-4.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            {/* 3. Group Chats */}
-            {groupChats.map((g) => (
-              <div
-                key={g.id}
-                onClick={() => handleOpenGroupChat(g)}
-                className="flex items-center justify-between p-4 bg-slate-900/40 border border-slate-900/60 rounded-xl hover:bg-slate-900/60 transition cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold text-base shadow-inner uppercase">
-                    {g.name.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-slate-100 text-base">{g.name}</div>
-                    <div className="text-xs text-slate-400 mt-0.5 font-medium">Группа</div>
-                  </div>
-                </div>
-                <ChevronRight className="w-4.5 h-4.5 text-slate-500" />
-              </div>
-            ))}
-
-            {/* 4. Friends List */}
-            {friends.length === 0 && groupChats.length === 0 ? (
-              <p className="text-slate-500 text-center py-12 text-sm">
-                Братва пуста. Добавьте друзей по Telegram ID!
-              </p>
-            ) : (
-              friends.map((f) => (
-                <div
-                  key={f.tg_id}
-                  onClick={() => handleOpenPrivateChat(f)}
-                  className="flex items-center justify-between p-4 bg-slate-900/40 border border-slate-900/60 rounded-xl hover:bg-slate-900/60 transition cursor-pointer"
+          {/* Slidable Filter Tabs */}
+          <div className="bg-slate-900/30 border border-slate-900/80 p-1 rounded-xl flex gap-1 mb-4 select-none flex-shrink-0">
+            {(['all', 'friends', 'groups', 'saved'] as const).map((tab) => {
+              const label =
+                tab === 'all'
+                  ? 'Все'
+                  : tab === 'friends'
+                  ? 'Личные'
+                  : tab === 'groups'
+                  ? 'Группы'
+                  : 'Избранное';
+              const isActive = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => {
+                    setActiveTab(tab);
+                    hapticImpact("selection");
+                  }}
+                  className={`flex-1 text-center py-2 px-2.5 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                    isActive
+                      ? 'bg-primary text-white shadow-lg shadow-primary/10'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/30'
+                  }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-slate-800 text-slate-200 flex items-center justify-center font-bold text-base shadow-inner uppercase">
-                      {f.first_name.charAt(0)}
-                    </div>
-                    <div>
-                      <div className="font-semibold text-slate-100 text-base">{f.first_name}</div>
-                      <div className="text-xs text-slate-400 mt-0.5 font-medium">Личная переписка</div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4.5 h-4.5 text-slate-500" />
-                </div>
-              ))
-            )}
+                  {label}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Floated Group creation action trigger */}
-          <button
-            onClick={() => { hapticImpact("selection"); setShowCreateGroup(true); }}
-            className="fixed bottom-6 right-6 w-14 h-14 bg-primary hover:bg-primary-hover text-white rounded-full flex items-center justify-center shadow-xl shadow-primary/20 active:scale-95 transition-all outline-none focus:outline-none"
-          >
-            <Plus className="w-6.5 h-6.5" />
-          </button>
+          {/* Chat Inbox list */}
+          <div className="flex-grow flex flex-col gap-2 overflow-y-auto pb-12 pr-1">
+            {/* Filter computations */}
+            {(() => {
+              const filteredRequests = friendRequests.filter((req) =>
+                req.user.first_name.toLowerCase().includes(chatSearch.toLowerCase())
+              );
+              const filteredGroupChats = groupChats.filter((g) =>
+                g.name.toLowerCase().includes(chatSearch.toLowerCase())
+              );
+              const filteredFriends = friends.filter((f) =>
+                f.first_name.toLowerCase().includes(chatSearch.toLowerCase())
+              );
+
+              const hasRequests = filteredRequests.length > 0;
+              const hasGroups = filteredGroupChats.length > 0;
+              const hasFriends = filteredFriends.length > 0;
+              const isSearching = chatSearch.trim() !== '';
+
+              return (
+                <>
+                  {/* 1. Pending Friend Requests */}
+                  {(activeTab === 'all' || activeTab === 'friends') &&
+                    filteredRequests.map((req) => (
+                      <div
+                        key={req.id}
+                        className="flex items-center justify-between p-4 bg-amber-500/5 border border-amber-500/20 rounded-2xl animate-fade-in shadow-md"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold text-base shadow-inner">
+                            {req.user.first_name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-bold text-slate-100 text-sm">{req.user.first_name}</div>
+                            <div className="text-[11px] text-amber-500 font-semibold mt-0.5">
+                              Входящий запрос в контакты
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => handleAcceptFriend(req.id)}
+                            className="w-8.5 h-8.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center transition active:scale-95 cursor-pointer shadow-md"
+                            title="Принять"
+                          >
+                            <UserCheck className="w-4.5 h-4.5" />
+                          </button>
+                          <button
+                            onClick={() => handleRejectFriend(req.id)}
+                            className="w-8.5 h-8.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-rose-500 flex items-center justify-center transition active:scale-95 cursor-pointer"
+                            title="Отклонить"
+                          >
+                            <UserMinus className="w-4.5 h-4.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                  {/* 2. Saved Messages Self Chat */}
+                  {(activeTab === 'all' || activeTab === 'saved') && (
+                    <div
+                      onClick={handleOpenSavedMessages}
+                      className="flex items-center justify-between p-3.5 bg-slate-900/20 hover:bg-slate-900/40 border border-slate-900/60 hover:border-slate-900 rounded-2xl transition-all duration-200 cursor-pointer group shadow-sm active:scale-[0.99]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10.5 h-10.5 rounded-xl bg-primary-light text-primary flex items-center justify-center shadow-inner group-hover:scale-105 transition">
+                          <Bookmark className="w-5.5 h-5.5 fill-current" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <div className="font-bold text-slate-100 text-sm flex items-center gap-1.5">
+                            Избранное
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          </div>
+                          <div className="text-[11px] text-slate-400 mt-0.5 truncate">
+                            Личный архив заметок, файлов и аудио
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 text-slate-500 group-hover:text-primary transition">
+                        <span className="text-[10px] font-mono font-bold tracking-widest mr-1 text-slate-600">E2EE</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. Group Chats list */}
+                  {(activeTab === 'all' || activeTab === 'groups') &&
+                    filteredGroupChats.map((g) => (
+                      <div
+                        key={g.id}
+                        onClick={() => handleOpenGroupChat(g)}
+                        className="flex items-center justify-between p-3.5 bg-slate-900/20 hover:bg-slate-900/40 border border-slate-900/60 hover:border-slate-900 rounded-2xl transition-all duration-200 cursor-pointer group shadow-sm active:scale-[0.99] animate-fade-in"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10.5 h-10.5 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-extrabold text-base shadow-inner uppercase group-hover:scale-105 transition">
+                            {g.name.charAt(0)}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <div className="font-bold text-slate-100 text-sm flex items-center gap-1.5">
+                              {g.name}
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            </div>
+                            <div className="text-[11px] text-slate-400 mt-0.5 truncate flex items-center gap-1">
+                              <Users className="w-3 h-3 text-slate-500" /> Групповой защищенный канал
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 text-slate-500 group-hover:text-primary transition">
+                          <span className="text-[10px] font-mono font-bold tracking-widest mr-1 text-slate-600">SECURE</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </div>
+                      </div>
+                    ))}
+
+                  {/* 4. Friends list (PM) */}
+                  {(activeTab === 'all' || activeTab === 'friends') &&
+                    filteredFriends.map((f) => (
+                      <div
+                        key={f.tg_id}
+                        onClick={() => handleOpenPrivateChat(f)}
+                        className="flex items-center justify-between p-3.5 bg-slate-900/20 hover:bg-slate-900/40 border border-slate-900/60 hover:border-slate-900 rounded-2xl transition-all duration-200 cursor-pointer group shadow-sm active:scale-[0.99] animate-fade-in"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10.5 h-10.5 rounded-xl bg-slate-800 text-slate-200 flex items-center justify-center font-bold text-base shadow-inner uppercase group-hover:scale-105 transition">
+                            {f.first_name.charAt(0)}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <div className="font-bold text-slate-100 text-sm flex items-center gap-1.5">
+                              {f.first_name}
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
+                            </div>
+                            <div className="text-[11px] text-slate-400 mt-0.5 truncate flex items-center gap-1">
+                              <Lock className="w-3 h-3 text-slate-500" /> Личный зашифрованный чат
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 text-slate-500 group-hover:text-primary transition">
+                          <span className="text-[10px] font-mono font-bold tracking-widest mr-1 text-slate-600">PM</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </div>
+                      </div>
+                    ))}
+
+                  {/* Empty states for filters */}
+                  {activeTab === 'groups' && !hasGroups && (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <Users className="w-10 h-10 text-slate-600 mb-3" />
+                      <p className="text-slate-500 text-sm">
+                        {isSearching ? 'Группы по вашему запросу не найдены' : 'Нет активных групповых сходняков'}
+                      </p>
+                    </div>
+                  )}
+
+                  {activeTab === 'friends' && !hasFriends && !hasRequests && (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <Users className="w-10 h-10 text-slate-600 mb-3" />
+                      <p className="text-slate-500 text-sm">
+                        {isSearching ? 'Контакты по вашему запросу не найдены' : 'Братва пуста. Добавьте друзей по Telegram ID!'}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {activeTab === 'all' && !hasFriends && !hasGroups && !hasRequests && (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <Users className="w-10 h-10 text-slate-600 mb-3 animate-pulse" />
+                      <p className="text-slate-400 text-sm max-w-[240px] leading-relaxed">
+                        {isSearching
+                          ? 'Ничего не найдено по вашему запросу'
+                          : 'У вас еще нет контактов или групп. Добавьте друзей, чтобы начать секретное общение!'}
+                      </p>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
         </div>
       )}
 
@@ -1281,6 +1435,8 @@ export default function App() {
       {showSettings && currentUser && (
         <SettingsModal
           userId={currentUser.id}
+          userName={currentUser.first_name}
+          myFingerprint={myFingerprint}
           onClose={() => setShowSettings(false)}
           worker={workerRef.current}
           onPanicWipe={triggerPanicWipe}
@@ -1324,32 +1480,61 @@ export default function App() {
 
       {/* Add Friend Modal */}
       {showAddFriend && (
-        <div className="fixed inset-0 z-[1000] bg-slate-950/80 backdrop-blur-md flex flex-col justify-center p-6 animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col gap-4 max-w-md w-full mx-auto relative">
+        <div className="fixed inset-0 z-[1000] bg-slate-950/80 backdrop-blur-md flex flex-col justify-center p-5 animate-fade-in font-sans">
+          <div className="bg-gradient-to-br from-slate-900/90 to-slate-950/90 border border-slate-800 p-6 rounded-3xl flex flex-col gap-5 max-w-md w-full mx-auto relative shadow-2xl overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
+            
             <button
               onClick={() => setShowAddFriend(false)}
-              className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"
+              className="absolute top-5 right-5 text-slate-500 hover:text-slate-300 transition-colors bg-slate-950/50 p-1.5 rounded-full"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
-            <h3 className="font-bold text-slate-100 text-lg">Найти брата</h3>
-            <p className="text-xs text-slate-400 mt-[-5px]">
-              Введите Telegram ID друга. Чтобы узнать свой ID, посмотрите на ID in карточке вашего
-              профиля.
-            </p>
-            <input
-              type="number"
-              placeholder="ID друга..."
-              value={friendIdInput}
-              onChange={(e) => setFriendIdInput(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-900 text-slate-200 rounded-xl px-4 py-3 font-bold tracking-widest text-center outline-none focus:border-primary"
-            />
+            
+            <div className="flex flex-col gap-1 pr-8">
+              <h3 className="font-extrabold font-mono tracking-tight text-slate-100 text-xl uppercase">Добавить контакт</h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
+                Введите идентификатор пользователя для безопасного соединения
+              </p>
+            </div>
+
+            {currentUser && (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] text-slate-500 font-bold font-mono tracking-wider uppercase pl-1">Ваш ID</span>
+                <div className="flex items-center justify-between bg-slate-950/60 rounded-2xl px-4 py-3 border border-slate-800/80">
+                  <span className="text-sm text-slate-300 font-mono font-bold select-all">{currentUser.id}</span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(currentUser.id.toString());
+                      hapticImpact("success");
+                    }}
+                    className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-primary font-bold font-mono text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-primary/20"
+                    title="Копировать"
+                  >
+                    <Copy className="w-3 h-3" />
+                    Копировать
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10px] text-slate-500 font-bold font-mono tracking-wider uppercase pl-1">ID Контакта</span>
+              <input
+                type="number"
+                placeholder="000000000"
+                value={friendIdInput}
+                onChange={(e) => setFriendIdInput(e.target.value)}
+                className="w-full bg-slate-950/50 border border-slate-800 focus:border-primary/50 text-slate-100 rounded-2xl px-5 py-4 font-mono font-bold text-lg outline-none transition-colors"
+              />
+            </div>
+            
             <button
               onClick={handleAddFriend}
               disabled={searchSpinner}
-              className="bg-primary hover:bg-primary-hover text-white font-semibold py-3.5 rounded-xl transition flex items-center justify-center gap-1.5"
+              className="w-full bg-primary hover:bg-primary-hover active:bg-primary/90 text-white font-bold font-mono tracking-wide py-4 rounded-2xl flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] mt-2 shadow-lg shadow-primary/20 disabled:opacity-70 disabled:active:scale-100"
             >
-              {searchSpinner ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Отправить запрос'}
+              {searchSpinner ? <Loader2 className="w-5 h-5 animate-spin" /> : 'ОТПРАВИТЬ ЗАПРОС'}
             </button>
           </div>
         </div>

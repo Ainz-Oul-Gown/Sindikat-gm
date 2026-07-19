@@ -17,12 +17,12 @@ export function hapticImpact(type: 'light' | 'medium' | 'heavy' | 'success' | 'w
 
   // Fallback to Web Vibration API for Android Chrome/PWA
   if (navigator.vibrate) {
-    if (type === 'light') navigator.vibrate(10);
-    else if (type === 'medium') navigator.vibrate(20);
-    else if (type === 'heavy') navigator.vibrate(40);
-    else if (type === 'success') navigator.vibrate([10, 30, 20]);
-    else if (type === 'warning') navigator.vibrate([20, 20, 20]);
-    else if (type === 'error') navigator.vibrate([30, 40, 30, 40, 40]);
-    else if (type === 'selection') navigator.vibrate(5);
+    if (type === 'light') navigator.vibrate(35);
+    else if (type === 'medium') navigator.vibrate(75);
+    else if (type === 'heavy') navigator.vibrate(120);
+    else if (type === 'success') navigator.vibrate([40, 40, 70]);
+    else if (type === 'warning') navigator.vibrate([60, 50, 60]);
+    else if (type === 'error') navigator.vibrate([80, 50, 80, 50, 120]);
+    else if (type === 'selection') navigator.vibrate(25);
   }
 }

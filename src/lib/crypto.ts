@@ -89,13 +89,13 @@ export async function verifySignature(
   }
 
   const pubKeyData = pubKeyCache[senderId];
-  if (!pubKeyData) return true; // Fail-open fallback if user doesn't have keys yet
+  if (!pubKeyData) return false; // Fail-closed: missing keys mean we cannot verify signature
 
   let keysDict: any = {};
   try {
     keysDict = JSON.parse(pubKeyData);
   } catch (e) {
-    return true;
+    return false; // Fail-closed: invalid signature dictionary schema
   }
 
   // Support both old structure (single JWK) and new structure (dict mapping device IDs to {rsa, ecdsa})

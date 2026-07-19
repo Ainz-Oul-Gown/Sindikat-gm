@@ -1,5 +1,5 @@
 import { hapticImpact } from "../lib/haptics";
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Brain, Cpu, ShieldAlert, Sparkles, Download, Trash, RefreshCw } from 'lucide-react';
 
 interface AiScreenProps {
@@ -166,48 +166,59 @@ hapticImpact("success");
   const isWhisperDownloaded = parseFloat(whisperSize) > 0;
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 text-slate-100 select-none animate-fade-in">
+    <div className="flex flex-col min-h-full bg-slate-950 text-slate-100 select-none animate-fade-in font-sans">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-900 pb-3 mb-5 px-1">
+      <div className="flex items-center justify-between border-b border-slate-900 pb-4 mb-6 px-1">
         <button
           onClick={onBack}
-          className="text-blue-500 hover:text-blue-400 font-medium flex items-center gap-1 focus:outline-none"
+          className="text-primary hover:text-primary-hover font-semibold flex items-center gap-1 focus:outline-none transition active:scale-95"
         >
           <ChevronLeft className="w-5 h-5" /> Назад
         </button>
-        <span className="font-semibold text-slate-200">Нейро-модуль</span>
-        <button onClick={calculateSizes} className="text-blue-500 p-1">
-          <RefreshCw className="w-5 h-5" />
+        <span className="font-bold font-display text-slate-200 tracking-tight text-base">Нейро-модуль</span>
+        <button 
+          onClick={calculateSizes} 
+          className="text-primary hover:text-primary-hover p-1 transition active:scale-95"
+        >
+          <RefreshCw className="w-4.5 h-4.5" />
         </button>
       </div>
 
       {/* Main card */}
-      <div className="bg-slate-900/60 border border-slate-900 p-6 rounded-2xl flex flex-col items-center justify-center text-center mb-6 shadow-xl shadow-rose-900/5">
-        <Brain className="w-14 h-14 text-rose-500 mb-4 animate-pulse" />
-        <h3 className="text-3xl font-bold text-slate-100 mb-1">{totalSize} МБ</h3>
-        <span className="text-xs text-slate-400 font-medium tracking-wide">
-          Занято нейросетевыми моделями в кэше
+      <div className="bg-slate-900/40 border border-slate-800/60 rounded-3xl p-6 flex flex-col items-center justify-center text-center mb-6 relative overflow-hidden shadow-2xl">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
+        <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mb-4 glow-primary" style={{ '--primary-border': 'rgba(244,63,94,0.3)' } as React.CSSProperties}>
+          <Brain className="w-8 h-8 text-rose-500 animate-pulse" />
+        </div>
+        <h3 className="text-4xl font-extrabold font-display text-slate-100 mb-1.5 tracking-tight">
+          {totalSize} <span className="text-xl text-rose-500 font-bold">МБ</span>
+        </h3>
+        <span className="text-[11px] text-slate-400 font-mono uppercase tracking-wider">
+          ЛОКАЛЬНЫЙ НЕЙРОСЕТЕВОЙ КЭШ
         </span>
       </div>
 
       {/* Embedded Search Settings */}
-      <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 px-1">
-        Семантический поиск
+      <h3 className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-widest mb-3 px-1">
+        СЕМАНТИЧЕСКИЙ ПОИСК
       </h3>
 
-      <div className="bg-slate-900/40 border border-slate-900 p-5 rounded-2xl mb-6">
+      <div className="bg-slate-900/30 border border-slate-900 p-5 rounded-2xl mb-6 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-2 text-[8px] text-slate-600 font-mono tracking-widest pointer-events-none select-none uppercase">
+          MODEL: L12-V2
+        </div>
         <div className="flex justify-between items-start gap-4">
           <div>
-            <div className="font-semibold text-slate-200 text-sm">Multilingual MiniLM</div>
+            <div className="font-bold text-slate-200 text-sm">Multilingual MiniLM</div>
             <div className="text-xs text-slate-400 mt-1 leading-relaxed">
               Продвинутое понимание смысла и контекста сообщений (Ru/En)
             </div>
           </div>
         </div>
 
-        <div className="flex justify-between items-center border-t border-slate-900 mt-4 pt-4 text-xs font-semibold">
-          <span className="text-slate-500">Занято: {searchSize} МБ</span>
-          <span className={isSearchDownloaded ? 'text-emerald-500' : 'text-blue-500'}>
+        <div className="flex justify-between items-center border-t border-slate-900/60 mt-4 pt-4 text-xs">
+          <span className="text-slate-500 font-mono">Занято: {searchSize} МБ</span>
+          <span className={`font-semibold ${isSearchDownloaded ? 'text-emerald-400' : 'text-primary'}`}>
             {isSearchDownloaded ? 'Установлена' : 'Не загружена'}
           </span>
         </div>
@@ -215,12 +226,12 @@ hapticImpact("success");
         {searchProgress !== null ? (
           <div className="mt-4">
             <div className="flex justify-between text-xs text-slate-400 mb-2">
-              <span>Скачивание модели...</span>
+              <span className="font-mono text-[11px]">Загрузка весов...</span>
               <span className="font-mono">{searchProgress}%</span>
             </div>
-            <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
+            <div className="w-full h-1 bg-slate-950 rounded-full overflow-hidden">
               <div
-                className="h-full bg-blue-500 transition-all duration-300"
+                className="h-full bg-primary transition-all duration-300"
                 style={{ width: `${searchProgress}%` }}
               />
             </div>
@@ -228,7 +239,7 @@ hapticImpact("success");
         ) : isSearchDownloaded ? (
           <button
             onClick={handleDeleteSearch}
-            className="mt-4 w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-sm font-semibold py-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-98"
+            className="mt-4 w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold py-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-98"
           >
             <Trash className="w-4 h-4" /> Удалить модель поиска
           </button>
@@ -236,7 +247,7 @@ hapticImpact("success");
           <button
             onClick={handleDownloadSearch}
             disabled={searchLoading}
-            className="mt-4 w-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-sm font-semibold py-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-98"
+            className="mt-4 w-full bg-primary/10 hover:bg-primary text-primary hover:text-white border border-primary/20 hover:border-transparent text-xs font-semibold py-3 rounded-xl flex items-center justify-center gap-1.5 transition duration-300 active:scale-98 glow-primary"
           >
             <Download className="w-4 h-4" /> Скачать модель (~117 МБ)
           </button>
@@ -244,15 +255,15 @@ hapticImpact("success");
       </div>
 
       {/* Speech transcription Whisper model */}
-      <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 px-1">
-        Распознавание речи
+      <h3 className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-widest mb-3.5 px-1">
+        РАСПОЗНАВАНИЕ РЕЧИ (WHISPER)
       </h3>
 
       {/* Auto transcription toggle */}
-      <div className="flex items-center justify-between p-4 bg-slate-900/40 border border-slate-900/60 rounded-xl mb-3">
+      <div className="flex items-center justify-between p-4 bg-slate-900/20 border border-slate-900/60 rounded-2xl mb-4 transition duration-200">
         <div>
-          <div className="font-semibold text-slate-200 text-sm">Авто-расшифровка</div>
-          <div className="text-xs text-slate-400 mt-1">Переводить новые ГС в текст</div>
+          <div className="font-bold text-slate-200 text-sm">Авто-расшифровка</div>
+          <div className="text-xs text-slate-400 mt-0.5">Переводить новые ГС в текст</div>
         </div>
 
         <label className="relative inline-flex items-center cursor-pointer select-none">
@@ -262,19 +273,19 @@ hapticImpact("success");
             onChange={(e) => handleAutoWhisperToggle(e.target.checked)}
             className="sr-only peer"
           />
-          <div className="w-11 h-6 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500" />
+          <div className="w-10 h-5.5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-slate-200 after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-emerald-500 peer-checked:after:bg-white" />
         </label>
       </div>
 
-      <div className="bg-slate-900/40 border border-slate-900 p-5 rounded-2xl mb-4">
-        <label className="text-xs font-semibold text-slate-400 mb-2.5 block">
-          Модель Whisper (Качество):
+      <div className="bg-slate-900/30 border border-slate-900 p-5 rounded-2xl mb-4 relative overflow-hidden">
+        <label className="text-[10px] font-bold font-mono text-slate-400 mb-2.5 block">
+          ВЫБРАТЬ МОДЕЛЬ WHISPER (КАЧЕСТВО):
         </label>
         <div className="relative w-full mb-3">
           <select
             value={whisperModel}
             onChange={(e) => handleWhisperModelChange(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-900 text-slate-200 rounded-xl px-4 py-3 text-sm focus:border-blue-500 outline-none appearance-none"
+            className="w-full bg-slate-950 border border-slate-900 text-slate-200 rounded-xl px-4 py-3 text-xs font-mono focus:border-primary outline-none appearance-none cursor-pointer"
           >
             <option value="Xenova/whisper-tiny">Tiny (Самая быстрая, ~40 МБ)</option>
             <option value="Xenova/whisper-base">Base (Средняя, ~75 МБ)</option>
@@ -287,9 +298,9 @@ hapticImpact("success");
           </div>
         </div>
 
-        <div className="flex justify-between items-center border-t border-slate-900 mt-4 pt-4 text-xs font-semibold">
-          <span className="text-slate-500">Занято: {whisperSize} МБ</span>
-          <span className={isWhisperDownloaded ? 'text-emerald-500' : 'text-blue-500'}>
+        <div className="flex justify-between items-center border-t border-slate-900/60 mt-4 pt-4 text-xs">
+          <span className="text-slate-500 font-mono">Занято: {whisperSize} МБ</span>
+          <span className={`font-semibold ${isWhisperDownloaded ? 'text-emerald-400' : 'text-primary'}`}>
             {isWhisperDownloaded ? 'Установлена' : 'Не загружена'}
           </span>
         </div>
@@ -297,12 +308,12 @@ hapticImpact("success");
         {whisperProgress !== null ? (
           <div className="mt-4">
             <div className="flex justify-between text-xs text-slate-400 mb-2">
-              <span>Скачивание модели...</span>
+              <span className="font-mono text-[11px]">Загрузка весов...</span>
               <span className="font-mono">{whisperProgress}%</span>
             </div>
-            <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
+            <div className="w-full h-1 bg-slate-950 rounded-full overflow-hidden">
               <div
-                className="h-full bg-blue-500 transition-all duration-300"
+                className="h-full bg-primary transition-all duration-300"
                 style={{ width: `${whisperProgress}%` }}
               />
             </div>
@@ -310,7 +321,7 @@ hapticImpact("success");
         ) : isWhisperDownloaded ? (
           <button
             onClick={handleDeleteWhisper}
-            className="mt-4 w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-sm font-semibold py-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-98"
+            className="mt-4 w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold py-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-98"
           >
             <Trash className="w-4 h-4" /> Удалить модель Whisper
           </button>
@@ -318,7 +329,7 @@ hapticImpact("success");
           <button
             onClick={handleDownloadWhisper}
             disabled={whisperLoading}
-            className="mt-4 w-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-sm font-semibold py-3 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-98"
+            className="mt-4 w-full bg-primary/10 hover:bg-primary text-primary hover:text-white border border-primary/20 hover:border-transparent text-xs font-semibold py-3 rounded-xl flex items-center justify-center gap-1.5 transition duration-300 active:scale-98 glow-primary"
           >
             <Download className="w-4 h-4" /> Скачать выбранную модель
           </button>
