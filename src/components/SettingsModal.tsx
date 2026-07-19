@@ -21,6 +21,7 @@ import DevicesScreen from './DevicesScreen';
 import StorageScreen from './StorageScreen';
 import AiScreen from './AiScreen';
 import { applyTheme } from '../lib/theme';
+import { supabaseClient } from '../lib/supabase';
 
 interface SettingsModalProps {
   userId: number;
@@ -49,6 +50,7 @@ export default function SettingsModal({
   const [hasPin, setHasPin] = useState(false);
   const [hasPanicPin, setHasPanicPin] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
+  const [myInvites, setMyInvites] = useState<string[]>([]);
 
   useEffect(() => {
     // Read theme color
@@ -61,7 +63,85 @@ export default function SettingsModal({
     // Read PIN status
     setHasPin(!!localStorage.getItem('synd_pin_hash'));
     setHasPanicPin(!!localStorage.getItem('synd_panic_pin_hash'));
-  }, [activeScreen]);
+
+    // Fetch invites
+    const fetchStatus = async () => {
+      try {
+        const { data } = await supabaseClient
+          .from('users')
+          .select('status')
+          .eq('tg_id', userId)
+          .maybeSingle();
+        if (data && data.status) {
+          const parsed = JSON.parse(data.status);
+          if (parsed && Array.isArray(parsed.invites)) {
+            setMyInvites(parsed.invites);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse user status invites', e);
+      }
+    };
+    fetchStatus();
+  }, [activeScreen, userId]);
+
+  const handleGenerateInvite = async () => {
+    if (myInvites.length >= 3) return;
+    const newCode = `SYND-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const updatedInvites = [...myInvites, newCode];
+    setMyInvites(updatedInvites);
+    hapticImpact("success");
+
+    try {
+      const { data } = await supabaseClient
+        .from('users')
+        .select('status')
+        .eq('tg_id', userId)
+        .maybeSingle();
+      
+      let parsedStatus = {};
+      try {
+        if (data && data.status) {
+          parsedStatus = JSON.parse(data.status);
+        }
+      } catch(e) {}
+
+      await supabaseClient
+        .from('users')
+        .update({ status: JSON.stringify({ ...parsedStatus, invites: updatedInvites }) })
+        .eq('tg_id', userId);
+    } catch(e) {
+      console.error(e);
+    }
+  };
+
+  const handleRevokeInvite = async (code: string) => {
+    const updatedInvites = myInvites.filter(c => c !== code);
+    setMyInvites(updatedInvites);
+    hapticImpact("warning");
+
+    try {
+      const { data } = await supabaseClient
+        .from('users')
+        .select('status')
+        .eq('tg_id', userId)
+        .maybeSingle();
+      
+      let parsedStatus = {};
+      try {
+        if (data && data.status) {
+          parsedStatus = JSON.parse(data.status);
+        }
+      } catch(e) {}
+
+      await supabaseClient
+        .from('users')
+        .update({ status: JSON.stringify({ ...parsedStatus, invites: updatedInvites }) })
+        .eq('tg_id', userId);
+    } catch(e) {
+      console.error(e);
+    }
+  };
 
   const handleColorSelect = (color: string) => {
     setAccentColor(color);
@@ -280,6 +360,63 @@ hapticImpact("selection");
               </div>
               <ChevronRight className="w-4 h-4 text-slate-500" />
             </button>
+          </div>
+        </div>
+
+        {/* Whitelists & Invites */}
+        <div>
+          <h3 className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-widest mb-2.5 px-1">
+            КОНТРОЛЬ ДОСТУПА (БЕЛЫЙ СПИСОК)
+          </h3>
+
+          <div className="bg-slate-900/20 border border-slate-900/60 rounded-2xl p-4.5 space-y-4">
+            <div className="flex justify-between items-center gap-4">
+              <div>
+                <span className="text-xs font-bold text-slate-200 block">Коды приглашений (Инвайты)</span>
+                <span className="text-[10px] text-slate-400 mt-1 block">Вы можете создать до 3 активных кодов для друзей. Каждым кодом можно воспользоваться ровно один раз.</span>
+              </div>
+              <button
+                disabled={myInvites.length >= 3}
+                onClick={handleGenerateInvite}
+                className="py-2.5 px-3 bg-primary hover:bg-primary-hover disabled:bg-slate-900/80 disabled:text-slate-600 text-white font-bold text-xs rounded-xl transition active:scale-95 shrink-0 select-none cursor-pointer"
+              >
+                Создать
+              </button>
+            </div>
+
+            {myInvites.length > 0 ? (
+              <div className="space-y-2 pt-3 border-t border-slate-900">
+                {myInvites.map((code) => (
+                  <div key={code} className="flex justify-between items-center bg-slate-950/40 border border-slate-900 rounded-xl p-2.5">
+                    <span className="font-mono text-xs font-bold text-amber-500 uppercase tracking-wider select-all">{code}</span>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(code);
+                          hapticImpact("success");
+                          alert("Код приглашения скопирован!");
+                        }}
+                        className="p-1.5 hover:bg-slate-900/60 rounded-lg text-slate-400 hover:text-slate-200 transition cursor-pointer"
+                        title="Копировать код"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleRevokeInvite(code)}
+                        className="p-1.5 hover:bg-rose-950/20 rounded-lg text-slate-500 hover:text-rose-400 transition cursor-pointer"
+                        title="Отозвать код"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-2 text-[10px] text-slate-500 font-mono">
+                У ВАС НЕТ АКТИВНЫХ КОДОВ ПРИГЛАШЕНИЙ
+              </div>
+            )}
           </div>
         </div>
 
