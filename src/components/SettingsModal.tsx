@@ -29,6 +29,48 @@ import { applyTheme } from '../lib/theme';
 import { supabaseClient } from '../lib/supabase';
 import * as idbKeyval from 'idb-keyval';
 
+const deriveAesKeyFromSeed = async (seed: string): Promise<CryptoKey> => {
+  const encoder = new TextEncoder();
+  const baseKey = await window.crypto.subtle.importKey(
+    'raw',
+    encoder.encode(seed),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+  
+  return window.crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: encoder.encode('syndicate-v1-salt'),
+      iterations: 10000,
+      hash: 'SHA-256'
+    },
+    baseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+};
+
+const encryptVault = async (aesKey: CryptoKey, rsaPrivJwk: JsonWebKey, ecdsaPrivJwk: JsonWebKey): Promise<string> => {
+  const encoder = new TextEncoder();
+  const rawData = JSON.stringify({ rsaPrivJwk, ecdsaPrivJwk });
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  
+  const cipherBuffer = await window.crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    aesKey,
+    encoder.encode(rawData)
+  );
+  
+  const payload = {
+    iv: btoa(String.fromCharCode(...iv)),
+    cipher: btoa(String.fromCharCode(...new Uint8Array(cipherBuffer)))
+  };
+  return JSON.stringify(payload);
+};
+
 interface SettingsModalProps {
   userId: number;
   userName: string;
@@ -308,11 +350,29 @@ hapticImpact("selection");
     } else {
       if (confirm("Включить быстрый вход по Passkey (Биометрии) на этом устройстве? Это позволит разблокировать приложение по отпечатку пальца или FaceID без ввода PIN-кода.")) {
         try {
+          // Export active keys from IndexedDB
+          const rsaKey = await idbKeyval.get<CryptoKey>(`my_private_key_${userId}`);
+          const ecdsaKey = await idbKeyval.get<CryptoKey>(`my_sign_key_${userId}`);
+
+          let localVault = null;
           const simulatedSeed = `passkey security credential anchor secret syndicate node ${userName.trim().toLowerCase()}`;
+          const aesKey = await deriveAesKeyFromSeed(simulatedSeed);
+
+          if (rsaKey && ecdsaKey) {
+            try {
+              const rsaPrivJwk = await window.crypto.subtle.exportKey('jwk', rsaKey);
+              const ecdsaPrivJwk = await window.crypto.subtle.exportKey('jwk', ecdsaKey);
+              localVault = await encryptVault(aesKey, rsaPrivJwk, ecdsaPrivJwk);
+            } catch (err) {
+              console.error('Failed to export keys for biometric vault', err);
+            }
+          }
+
           await idbKeyval.set('syndicate_passkey_credential', {
             id: userId,
             name: userName,
-            seed: simulatedSeed
+            seed: simulatedSeed,
+            local_vault: localVault
           });
           localStorage.setItem('synd_use_biometrics', 'on');
           setHasPasskey(true);

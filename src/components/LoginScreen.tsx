@@ -666,7 +666,15 @@ export function LoginScreen({ onLoginSuccess, isError, loadingText, deferredProm
 
           const keysPayload = JSON.parse(userProfile.public_key || '{}');
           const aesKey = await deriveAesKeyFromSeed(passkeyData.seed);
-          const decryptedKeys = await decryptVault(aesKey, keysPayload.vault);
+          
+          let decryptedKeys = null;
+          if (passkeyData.local_vault) {
+            decryptedKeys = await decryptVault(aesKey, passkeyData.local_vault);
+          }
+          
+          if (!decryptedKeys && keysPayload.vault) {
+            decryptedKeys = await decryptVault(aesKey, keysPayload.vault);
+          }
 
           if (!decryptedKeys) {
             hapticImpact("error");
