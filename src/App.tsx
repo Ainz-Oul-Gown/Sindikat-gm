@@ -1389,8 +1389,8 @@ export default function App() {
 
       {/* Install Prompt Modal */}
       {showInstallPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-5 shadow-2xl flex flex-col gap-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-4 sm:p-5 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto scrollbar-thin my-auto">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold text-slate-100 flex items-center gap-2">
                 <Download className="w-5 h-5 text-primary" />
@@ -1452,8 +1452,8 @@ export default function App() {
 
       {/* Create Group Modal */}
       {showCreateGroup && (
-        <div className="fixed inset-0 z-[1000] bg-slate-950/80 backdrop-blur-md flex flex-col justify-center p-6 animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col gap-4 max-w-md w-full mx-auto relative">
+        <div className="fixed inset-0 z-[1000] bg-slate-950/80 backdrop-blur-md flex flex-col justify-center p-4 sm:p-6 animate-fade-in overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 p-5 sm:p-6 rounded-2xl flex flex-col gap-4 max-w-md w-full mx-auto relative max-h-[90vh] overflow-y-auto scrollbar-thin my-auto">
             <button
               onClick={() => setShowCreateGroup(false)}
               className="absolute top-4 right-4 text-slate-500 hover:text-slate-300"
@@ -1480,8 +1480,8 @@ export default function App() {
 
       {/* Add Friend Modal */}
       {showAddFriend && (
-        <div className="fixed inset-0 z-[1000] bg-slate-950/80 backdrop-blur-md flex flex-col justify-center p-5 animate-fade-in font-sans">
-          <div className="bg-gradient-to-br from-slate-900/90 to-slate-950/90 border border-slate-800 p-6 rounded-3xl flex flex-col gap-5 max-w-md w-full mx-auto relative shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-[1000] bg-slate-950/80 backdrop-blur-md flex flex-col justify-center p-4 sm:p-5 animate-fade-in font-sans overflow-y-auto">
+          <div className="bg-gradient-to-br from-slate-900/90 to-slate-950/90 border border-slate-800 p-5 sm:p-6 rounded-3xl flex flex-col gap-5 max-w-md w-full mx-auto relative shadow-2xl max-h-[90vh] overflow-y-auto scrollbar-thin my-auto">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
             
             <button

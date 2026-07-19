@@ -700,7 +700,7 @@ export function LoginScreen({ onLoginSuccess, isError, loadingText, deferredProm
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-[100dvh] bg-slate-950 p-6 text-center select-none text-slate-100 font-sans relative overflow-hidden">
+    <div className="flex flex-col items-center justify-center min-h-[100dvh] w-full bg-slate-950 p-4 md:p-6 text-center select-none text-slate-100 font-sans relative overflow-y-auto">
       {/* Background cyber grid effect */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30 pointer-events-none" />
 
@@ -711,7 +711,7 @@ export function LoginScreen({ onLoginSuccess, isError, loadingText, deferredProm
       </div>
 
       {!isError ? (
-        <div className="flex flex-col items-center relative z-10 animate-pulse">
+        <div className="flex flex-col items-center relative z-10 animate-pulse py-10">
           <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center mb-6 glow-primary">
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
           </div>
@@ -720,7 +720,7 @@ export function LoginScreen({ onLoginSuccess, isError, loadingText, deferredProm
           </p>
         </div>
       ) : (
-        <div className="flex flex-col items-center w-full max-w-md relative z-10 overflow-y-auto max-h-[90vh] pr-1 scrollbar-thin">
+        <div className="flex flex-col items-center w-full max-w-md relative z-10 py-6 md:py-10">
           
           {/* Main QR Login View */}
           {viewMode === 'qr' && (
@@ -1147,8 +1147,8 @@ export function LoginScreen({ onLoginSuccess, isError, loadingText, deferredProm
 
       {/* --- INFO EXPLANATION POPUP MODAL --- */}
       {infoModalContent && (
-        <div className="fixed inset-0 z-[2000] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-5 select-none animate-fade-in text-left">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6.5 max-w-sm w-full shadow-2xl relative">
+        <div className="fixed inset-0 z-[2000] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-5 select-none animate-fade-in text-left overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6.5 max-w-sm w-full shadow-2xl relative max-h-[85vh] overflow-y-auto scrollbar-thin my-auto">
             <h3 className="text-base font-extrabold text-slate-100 flex items-center gap-2 mb-3">
               <ShieldCheck className="w-5 h-5 text-primary" />
               {infoModalContent.title}
@@ -1208,8 +1208,8 @@ export function LoginScreen({ onLoginSuccess, isError, loadingText, deferredProm
 
       {/* --- SIMULATED GOOGLE ACCOUNT PICKER OVERLAY --- */}
       {showGoogleOverlay && (
-        <div className="fixed inset-0 z-[2000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-5 select-none animate-fade-in text-left">
-          <div className="bg-white text-slate-900 rounded-3xl p-6.5 max-w-sm w-full shadow-2xl relative border border-slate-200">
+        <div className="fixed inset-0 z-[2000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-5 select-none animate-fade-in text-left overflow-y-auto">
+          <div className="bg-white text-slate-900 rounded-3xl p-5 sm:p-6.5 max-w-sm w-full shadow-2xl relative border border-slate-200 max-h-[85vh] overflow-y-auto scrollbar-thin my-auto">
             {/* Header */}
             <div className="flex flex-col items-center text-center pb-5 border-b border-slate-100 mb-4">
               <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center border border-slate-150 mb-3 shadow-inner">

@@ -170,7 +170,7 @@ hapticImpact("selection");
 
   if (activeScreen === 'currencies') {
     return (
-      <div className="fixed inset-0 z-[1000] bg-slate-950 p-5 overflow-y-auto">
+      <div className="fixed inset-0 z-[1000] bg-slate-950 p-4 sm:p-6 overflow-y-auto">
         <CurrenciesScreen userId={userId} onBack={() => setActiveScreen('main')} />
       </div>
     );
@@ -178,7 +178,7 @@ hapticImpact("selection");
 
   if (activeScreen === 'devices') {
     return (
-      <div className="fixed inset-0 z-[1000] bg-slate-950 p-5 overflow-y-auto">
+      <div className="fixed inset-0 z-[1000] bg-slate-950 p-4 sm:p-6 overflow-y-auto">
         <DevicesScreen userId={userId} onBack={() => setActiveScreen('main')} />
       </div>
     );
@@ -186,7 +186,7 @@ hapticImpact("selection");
 
   if (activeScreen === 'storage') {
     return (
-      <div className="fixed inset-0 z-[1000] bg-slate-950 p-5 overflow-y-auto">
+      <div className="fixed inset-0 z-[1000] bg-slate-950 p-4 sm:p-6 overflow-y-auto">
         <StorageScreen onBack={() => setActiveScreen('main')} />
       </div>
     );
@@ -194,14 +194,14 @@ hapticImpact("selection");
 
   if (activeScreen === 'ai') {
     return (
-      <div className="fixed inset-0 z-[1000] bg-slate-950 p-5 overflow-y-auto">
+      <div className="fixed inset-0 z-[1000] bg-slate-950 p-4 sm:p-6 overflow-y-auto">
         <AiScreen onBack={() => setActiveScreen('main')} worker={worker} />
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-[1000] bg-slate-950/95 backdrop-blur-3xl flex flex-col p-5 overflow-y-auto select-none animate-fade-in text-slate-100 font-sans">
+    <div className="fixed inset-0 z-[1000] bg-slate-950/95 backdrop-blur-3xl flex flex-col p-4 sm:p-6 overflow-y-auto select-none animate-fade-in text-slate-100 font-sans">
       {/* Header */}
       <div className="flex justify-between items-center pb-4 border-b border-slate-900 mb-6">
         <button
@@ -216,7 +216,7 @@ hapticImpact("selection");
 
       <div className="flex flex-col gap-6.5 max-w-md mx-auto w-full pb-10">
         {/* User profile & cryptographic cipher */}
-        <div className="bg-gradient-to-br from-slate-900/80 to-slate-950/80 border border-slate-900 rounded-2xl p-5 relative overflow-hidden shadow-xl flex flex-col gap-4">
+        <div className="bg-gradient-to-br from-slate-900/80 to-slate-950/80 border border-slate-900 rounded-2xl p-4 sm:p-5 relative overflow-hidden shadow-xl flex flex-col gap-4">
           <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
           
           <div className="flex items-center gap-4">
