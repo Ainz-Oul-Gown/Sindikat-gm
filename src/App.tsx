@@ -27,6 +27,7 @@ import PinScreen from './components/PinScreen';
 import ChatView from './components/ChatView';
 import SettingsModal from './components/SettingsModal';
 import { applyTheme } from './lib/theme';
+import { hapticImpact } from './lib/haptics';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<{ id: number; first_name: string } | null>(null);
@@ -294,7 +295,7 @@ export default function App() {
       const ecdsaKey = await window.crypto.subtle.importKey(
         'jwk',
         masterKeysJson.ecdsa,
-        { name: 'ECDSA', namedCurve: masterKeysJson?.ecdsa?.crv || ecdsa?.crv || 'P-256' },
+        { name: 'ECDSA', namedCurve: masterKeysJson?.ecdsa?.crv || 'P-256' },
         true,
         ['sign']
       );
@@ -390,6 +391,7 @@ export default function App() {
   const handleDeviceDecision = async (requestId: string, safePubKey: string, status: 'approved' | 'rejected') => {
     if (!currentUser) return;
     setPendingSyncRequest(null);
+    hapticImpact(status === 'approved' ? 'success' : 'warning');
 
     const updatePayload: any = { status };
 
@@ -541,6 +543,7 @@ export default function App() {
 
   const handleOpenSavedMessages = async () => {
     if (!currentUser) return;
+    hapticImpact("selection");
 
     // Retrieve or instantiate saved self chat
     let savedChatId = '';
@@ -611,6 +614,7 @@ export default function App() {
 
   const handleOpenPrivateChat = async (friend: User) => {
     if (!currentUser) return;
+    hapticImpact("selection");
 
     try {
       // Find private chat ID from RPC
@@ -684,6 +688,7 @@ export default function App() {
   };
 
   const handleOpenGroupChat = (g: Chat) => {
+    hapticImpact("selection");
     setActiveChat(g);
     setActiveScreen('chat');
   };
@@ -692,11 +697,13 @@ export default function App() {
   const handleAddFriend = async () => {
     const targetId = parseInt(friendIdInput.trim(), 10);
     if (!targetId || isNaN(targetId) || !currentUser) {
+      hapticImpact("error");
       alert('Введите корректный ID!');
       return;
     }
 
     if (targetId === currentUser.id) {
+      hapticImpact("error");
       alert('Это ваш собственный ID!');
       return;
     }
@@ -710,6 +717,7 @@ export default function App() {
         .maybeSingle();
 
       if (!user) {
+        hapticImpact("error");
         alert('Пользователь не зарегистрирован!');
         return;
       }
@@ -721,8 +729,10 @@ export default function App() {
       });
 
       if (error) {
+        hapticImpact("error");
         alert('Запрос уже отправлен или вы уже друзья!');
       } else {
+        hapticImpact("success");
         alert('Запрос отправлен!');
         setFriendIdInput('');
         setShowAddFriend(false);
@@ -773,6 +783,7 @@ export default function App() {
 
       await idbKeyval.set(`aes_key_${newChat.id}`, aesKey);
 
+      hapticImpact("success");
       loadChatsAndFriends(currentUser.id);
       alert(`Группа "${gName}" успешно создана!`);
     } catch (err) {
@@ -784,6 +795,7 @@ export default function App() {
     if (!currentUser) return;
     try {
       await supabaseClient.from('friendships').update({ status: 'accepted' }).eq('id', reqId);
+      hapticImpact("success");
       loadChatsAndFriends(currentUser.id);
     } catch (e) {
       console.error(e);
@@ -794,6 +806,7 @@ export default function App() {
     if (!currentUser) return;
     try {
       await supabaseClient.from('friendships').delete().eq('id', reqId);
+      hapticImpact("warning");
       loadChatsAndFriends(currentUser.id);
     } catch (e) {
       console.error(e);
@@ -919,6 +932,8 @@ export default function App() {
       <LoginScreen 
         isError={isError} 
         loadingText={loadingText} 
+        deferredPrompt={deferredPrompt}
+        setDeferredPrompt={setDeferredPrompt}
         onLoginSuccess={async (token, masterKeysJSON, user) => {
           localStorage.setItem('synd_token', token);
           
@@ -928,7 +943,7 @@ export default function App() {
               const pubEcdsa = Object.assign({}, ecdsa, { d: undefined });
               const pubRsa = Object.assign({}, rsa, { d: undefined, p: undefined, q: undefined, dp: undefined, dq: undefined, qi: undefined });
               
-              const impEcdsa = await window.crypto.subtle.importKey('jwk', ecdsa, { name: 'ECDSA', namedCurve: masterKeysJson?.ecdsa?.crv || ecdsa?.crv || 'P-256' }, true, ['sign']);
+              const impEcdsa = await window.crypto.subtle.importKey('jwk', ecdsa, { name: 'ECDSA', namedCurve: ecdsa?.crv || 'P-256' }, true, ['sign']);
               const impRsa = await window.crypto.subtle.importKey('jwk', rsa, { name: 'RSA-OAEP', hash: 'SHA-256' }, true, ['decrypt']);
               
               await idbKeyval.set(`my_private_key_${user.id}`, impRsa);
@@ -1037,6 +1052,7 @@ export default function App() {
               {!isStandalone && (
                 <button
                   onClick={async () => {
+                    hapticImpact("selection");
                     const tgWebApp = window.Telegram?.WebApp as any;
                     if (tgWebApp && tgWebApp.platform && tgWebApp.platform !== 'unknown') {
                       // We are in Telegram WebApp, open link in external browser with token
@@ -1065,7 +1081,7 @@ export default function App() {
                 </button>
               )}
               <button
-                onClick={() => setShowSettings(true)}
+                onClick={() => { hapticImpact("selection"); setShowSettings(true); }}
                 className="p-2 text-slate-400 hover:text-slate-200 active:scale-95 transition focus:outline-none"
               >
                 <Settings className="w-5.5 h-5.5" />
@@ -1099,7 +1115,7 @@ export default function App() {
               Братва
             </h3>
             <button
-              onClick={() => setShowAddFriend(true)}
+              onClick={() => { hapticImpact("selection"); setShowAddFriend(true); }}
               className="w-8 h-8 bg-primary-light text-primary border border-primary-border rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition focus:outline-none"
             >
               <UserPlus className="w-4.5 h-4.5" />
@@ -1209,7 +1225,7 @@ export default function App() {
 
           {/* Floated Group creation action trigger */}
           <button
-            onClick={() => setShowCreateGroup(true)}
+            onClick={() => { hapticImpact("selection"); setShowCreateGroup(true); }}
             className="fixed bottom-6 right-6 w-14 h-14 bg-primary hover:bg-primary-hover text-white rounded-full flex items-center justify-center shadow-xl shadow-primary/20 active:scale-95 transition-all outline-none focus:outline-none"
           >
             <Plus className="w-6.5 h-6.5" />

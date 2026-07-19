@@ -85,7 +85,7 @@ export default function DevicesScreen({ userId, onBack }: DevicesScreenProps) {
         
         const payloadData = {
           encKey: arrayBufferToBase64(encryptedAesKeyBuf),
-          iv: arrayBufferToBase64(iv),
+          iv: arrayBufferToBase64(iv.buffer),
           cipher: arrayBufferToBase64(ciphertextBuf)
         };
         

@@ -3,14 +3,17 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Loader2, ShieldAlert, MonitorSmartphone, QrCode } from 'lucide-react';
 import { supabaseClient } from '../lib/supabase';
 import { base64ToArrayBuffer } from '../lib/crypto';
+import { hapticImpact } from '../lib/haptics';
 
 interface LoginScreenProps {
   onLoginSuccess: (token: string, masterKeysJSON: string, userData: any) => void;
   isError: boolean;
   loadingText: string;
+  deferredPrompt: any;
+  setDeferredPrompt: (prompt: any) => void;
 }
 
-export function LoginScreen({ onLoginSuccess, isError, loadingText }: LoginScreenProps) {
+export function LoginScreen({ onLoginSuccess, isError, loadingText, deferredPrompt, setDeferredPrompt }: LoginScreenProps) {
   const [qrSessionId, setQrSessionId] = useState<string | null>(null);
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const privateKeyRef = useRef<CryptoKey | null>(null);
@@ -130,6 +133,7 @@ export function LoginScreen({ onLoginSuccess, isError, loadingText }: LoginScree
           {deferredPrompt && (
             <button 
               onClick={async () => {
+                hapticImpact("selection");
                 const promptEvent = deferredPrompt;
                 if (!promptEvent) return;
                 promptEvent.prompt();
@@ -147,6 +151,7 @@ export function LoginScreen({ onLoginSuccess, isError, loadingText }: LoginScree
 
           <button 
             onClick={() => {
+              hapticImpact("selection");
               const tgWebApp = window.Telegram?.WebApp as any;
               if (tgWebApp && tgWebApp.platform && tgWebApp.platform !== 'unknown') {
                 window.location.reload();

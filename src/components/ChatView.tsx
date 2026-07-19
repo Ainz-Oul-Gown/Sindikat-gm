@@ -763,6 +763,7 @@ hapticImpact("medium");
   };
 
   const cancelRecording = () => {
+    hapticImpact("warning");
     audioChunksRef.current = [];
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.onstop = () => {
@@ -889,6 +890,7 @@ hapticImpact("selection");
 
       if (error) throw error;
 
+      hapticImpact("success");
       alert('Вы успешно вступили в группу!');
       onBack(); // Refresh main lists
     } catch (err: any) {
@@ -947,6 +949,7 @@ hapticImpact("selection");
       await supabaseClient.from('chats').update({ name: trimmed }).eq('id', chat.id);
       setGroupName(trimmed);
       chat.name = trimmed;
+      hapticImpact("success");
     } catch (e) {
       console.error(e);
     }
@@ -966,6 +969,7 @@ hapticImpact("selection");
       await idbKeyval.del(`chat_hist_${chat.id}`);
       await idbKeyval.del(`aes_key_${chat.id}`);
 
+      hapticImpact("warning");
       alert('Вы вышли из группы.');
       onBack();
     } catch (err: any) {
@@ -981,6 +985,7 @@ hapticImpact("selection");
       await idbKeyval.del(`chat_hist_${chat.id}`);
       await idbKeyval.del(`aes_key_${chat.id}`);
 
+      hapticImpact("warning");
       alert('Группа удалена.');
       onBack();
     } catch (err: any) {
@@ -1084,6 +1089,7 @@ hapticImpact("selection");
         encrypted_text: encryptedInvite,
       });
 
+      hapticImpact("success");
       alert('Приглашение отправлено!');
       setActiveModal('none');
     } catch (err: any) {
@@ -1101,6 +1107,7 @@ hapticImpact("selection");
         .delete()
         .or(`and(requester_id.eq.${currentUser.id},addressee_id.eq.${friendId}),and(requester_id.eq.${friendId},addressee_id.eq.${currentUser.id})`);
 
+      hapticImpact("warning");
       alert('Друг удален.');
       onBack();
     } catch (e: any) {
@@ -1166,6 +1173,7 @@ hapticImpact("selection");
 
       if (error) throw error;
 
+      hapticImpact("success");
       setDebtRubles('');
       setActiveModal('debts');
       loadDebtsSummary();
@@ -1179,6 +1187,7 @@ hapticImpact("selection");
 
     try {
       await supabaseClient.from('debts').delete().eq('id', id);
+      hapticImpact("warning");
       loadDebtsSummary();
     } catch (e: any) {
       alert(e.message);

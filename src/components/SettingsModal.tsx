@@ -181,7 +181,7 @@ hapticImpact("selection");
           <div className="bg-slate-900/40 border border-slate-900/60 rounded-2xl overflow-hidden divide-y divide-slate-900">
             {/* Currencies */}
             <button
-              onClick={() => setActiveScreen('currencies')}
+              onClick={() => { hapticImpact("selection"); setActiveScreen('currencies'); }}
               className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-900/20 active:bg-slate-900/40 transition"
             >
               <div className="flex items-center gap-3 text-slate-300">
@@ -193,7 +193,7 @@ hapticImpact("selection");
 
             {/* Devices */}
             <button
-              onClick={() => setActiveScreen('devices')}
+              onClick={() => { hapticImpact("selection"); setActiveScreen('devices'); }}
               className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-900/20 active:bg-slate-900/40 transition"
             >
               <div className="flex items-center gap-3 text-slate-300">
@@ -214,7 +214,7 @@ hapticImpact("selection");
           <div className="bg-slate-900/40 border border-slate-900/60 rounded-2xl overflow-hidden divide-y divide-slate-900">
             {/* Storage */}
             <button
-              onClick={() => setActiveScreen('storage')}
+              onClick={() => { hapticImpact("selection"); setActiveScreen('storage'); }}
               className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-900/20 active:bg-slate-900/40 transition"
             >
               <div className="flex items-center gap-3 text-slate-300">
@@ -226,7 +226,7 @@ hapticImpact("selection");
 
             {/* AI */}
             <button
-              onClick={() => setActiveScreen('ai')}
+              onClick={() => { hapticImpact("selection"); setActiveScreen('ai'); }}
               className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-900/20 active:bg-slate-900/40 transition"
             >
               <div className="flex items-center gap-3 text-slate-300">
@@ -247,7 +247,7 @@ hapticImpact("selection");
           <div className="bg-slate-900/40 border border-slate-900/60 rounded-2xl overflow-hidden divide-y divide-slate-900">
             {/* Base PIN */}
             <button
-              onClick={() => onPinSetup('normal')}
+              onClick={() => { hapticImpact("selection"); onPinSetup('normal'); }}
               className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-900/20 active:bg-slate-900/40 transition"
             >
               <div className="flex items-center gap-3 text-slate-300">
@@ -262,7 +262,7 @@ hapticImpact("selection");
             {/* Panic PIN - only visible if base pin is configured */}
             {hasPin && (
               <button
-                onClick={() => onPinSetup('panic')}
+                onClick={() => { hapticImpact("selection"); onPinSetup('panic'); }}
                 className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-900/20 active:bg-slate-900/40 transition"
               >
                 <div className="flex items-center gap-3 text-slate-300">
@@ -277,7 +277,7 @@ hapticImpact("selection");
 
             {/* Panic Button */}
             <button
-              onClick={handlePanicWipeClick}
+              onClick={() => { hapticImpact("warning"); handlePanicWipeClick(); }}
               className="w-full flex items-center gap-3 p-4 text-left hover:bg-rose-500/5 active:bg-rose-500/10 text-rose-500 transition"
             >
               <Skull className="w-5 h-5 text-rose-500" />
